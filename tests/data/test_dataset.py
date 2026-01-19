@@ -53,5 +53,19 @@ class TestRoNINDataset(unittest.TestCase):
         self.assertEqual(imu.shape, (window_size, 6))
         self.assertEqual(velocity.shape, (window_size, 3))
 
+    def test_dataloader_multiprocessing(self):
+        """测试 DataLoader 多进程读取稳定性"""
+        from torch.utils.data import DataLoader
+        dataset = RoNINDataset(self.test_dir, self.list_file, window_size=200)
+        loader = DataLoader(dataset, batch_size=16, num_workers=2, shuffle=True)
+        
+        # 遍历一遍数据，确保没有多进程死锁或错误
+        count = 0
+        for imu, vel in loader:
+            self.assertEqual(imu.shape[0], 16 if count < 5 else imu.shape[0])
+            count += 1
+        
+        self.assertGreater(count, 0)
+
 if __name__ == '__main__':
     unittest.main()
