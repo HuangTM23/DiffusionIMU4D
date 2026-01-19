@@ -1,0 +1,18 @@
+# Data
+data/RoNIN/
+data/extracted/
+data/Data/
+data/lists/
+
+# Python cache
+__pycache__/
+**/*/__pycache__/
+*.pyc
+
+# Experiments
+experiments/
+wandb/
+
+# Temporary files
+.DS_Store
+*.swp
