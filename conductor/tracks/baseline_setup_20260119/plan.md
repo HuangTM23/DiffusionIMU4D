@@ -4,7 +4,7 @@
 - [x] Task: 初始化开发环境与依赖配置文件 fddce48
     - [ ] 编写 `requirements.txt` 包含 `torch`, `diffusers`, `wandb`, `scipy`, `pandas`
     - [ ] 创建 `utils/logger.py` 集成 WandB 初始化逻辑
-- [ ] Task: 实现基础工具类 (Utils)
+- [x] Task: 实现基础工具类 (Utils) b4b4c24
     - [ ] 编写测试验证坐标变换工具函数
     - [ ] 实现 `utils/physics.py` 用于 IMU 积分和坐标系对齐
 - [ ] Task: Conductor - User Manual Verification '环境准备与项目初始化' (Protocol in workflow.md)
