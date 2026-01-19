@@ -13,7 +13,7 @@
 - [x] Task: 实现 RoNIN 数据集加载器 aa1ba0a
     - [ ] 编写测试验证数据加载的维度和归一化
     - [ ] 在 `data/dataset.py` 中实现 `RoNINDataset` 类
-- [ ] Task: 验证 DataLoader 性能
+- [x] Task: 验证 DataLoader 性能 05bbc88
     - [ ] 编写测试确保 DataLoader 在多进程模式下稳定运行
 - [ ] Task: Conductor - User Manual Verification 'RoNIN 数据适配' (Protocol in workflow.md)
 
