@@ -15,7 +15,7 @@
 - [x] Task: Conductor - User Manual Verification 'RoNIN 数据适配' (Protocol in workflow.md) f91ab07
 
 ## Phase 3: Baseline 模型实现 (Baseline Model Implementation)
-- [ ] Task: 实现 ResNet-18 (RoNIN 变体) 架构
+- [x] Task: 实现 ResNet-18 (RoNIN 变体) 架构 f600bb7
     - [ ] 编写测试验证模型的 Input/Output 维度
     - [ ] 在 `models/resnet_baseline.py` 中实现模型
 - [ ] Task: 编写训练主循环 (Training Loop)
