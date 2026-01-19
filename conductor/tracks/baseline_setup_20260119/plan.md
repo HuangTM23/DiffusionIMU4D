@@ -1,7 +1,7 @@
 # Implementation Plan - 搭建基础实验环境与 Baseline 复现 (baseline_setup_20260119)
 
 ## Phase 1: 环境准备与项目初始化 (Environment & Initialization)
-- [ ] Task: 初始化开发环境与依赖配置文件
+- [x] Task: 初始化开发环境与依赖配置文件 fddce48
     - [ ] 编写 `requirements.txt` 包含 `torch`, `diffusers`, `wandb`, `scipy`, `pandas`
     - [ ] 创建 `utils/logger.py` 集成 WandB 初始化逻辑
 - [ ] Task: 实现基础工具类 (Utils)
