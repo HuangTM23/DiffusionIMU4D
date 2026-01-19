@@ -10,7 +10,7 @@
 - [x] Task: Conductor - User Manual Verification '环境准备与项目初始化' (Protocol in workflow.md) 0f2cf5b
 
 ## Phase 2: RoNIN 数据适配 (Data Adaptation)
-- [ ] Task: 实现 RoNIN 数据集加载器
+- [x] Task: 实现 RoNIN 数据集加载器 aa1ba0a
     - [ ] 编写测试验证数据加载的维度和归一化
     - [ ] 在 `data/dataset.py` 中实现 `RoNINDataset` 类
 - [ ] Task: 验证 DataLoader 性能
