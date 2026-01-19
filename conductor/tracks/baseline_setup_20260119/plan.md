@@ -18,7 +18,7 @@
 - [x] Task: 实现 ResNet-18 (RoNIN 变体) 架构 f600bb7
     - [ ] 编写测试验证模型的 Input/Output 维度
     - [ ] 在 `models/resnet_baseline.py` 中实现模型
-- [ ] Task: 编写训练主循环 (Training Loop)
+- [x] Task: 编写训练主循环 (Training Loop) e70ccad
     - [ ] 在 `train.py` 中实现基础训练和验证逻辑，支持 WandB 记录
 - [ ] Task: 验证 Baseline 训练闭环
     - [ ] 使用少量数据运行 1 个 epoch，验证从数据读取到 Loss 更新的完整流程
