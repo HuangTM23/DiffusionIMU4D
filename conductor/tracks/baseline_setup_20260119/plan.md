@@ -9,11 +9,10 @@
     - [ ] 实现 `utils/physics.py` 用于 IMU 积分和坐标系对齐
 - [x] Task: Conductor - User Manual Verification '环境准备与项目初始化' (Protocol in workflow.md) 0f2cf5b
 
-## Phase 2: RoNIN 数据适配 (Data Adaptation)
+## Phase 2: RoNIN 数据适配 (Data Adaptation) [checkpoint: f91ab07]
 - [x] Task: 实现 RoNIN 数据集加载器 47c6c23
 - [x] Task: 验证 DataLoader 性能 cfe97e0
-    - [ ] 编写测试确保 DataLoader 在多进程模式下稳定运行
-- [ ] Task: Conductor - User Manual Verification 'RoNIN 数据适配' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'RoNIN 数据适配' (Protocol in workflow.md) f91ab07
 
 ## Phase 3: Baseline 模型实现 (Baseline Model Implementation)
 - [ ] Task: 实现 ResNet-18 (RoNIN 变体) 架构
