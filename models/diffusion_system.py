@@ -111,8 +111,9 @@ class DiffusionSystem(nn.Module):
             v_prior = torch.nn.functional.interpolate(v_prior_feat, size=seq_len, mode='linear', align_corners=False)
         
         # 3. Init Noise
-        # 输出通道数应与 DiffUNet1D 的 out_channels 一致，通常为 3
-        xt = torch.randn(batch_size, 3, seq_len, device=imu.device)
+        # 动态获取输出通道数
+        out_channels = self.unet.out_conv[-1].out_channels
+        xt = torch.randn(batch_size, out_channels, seq_len, device=imu.device)
         
         # 4. Scheduler Init
         self.scheduler.set_timesteps(num_inference_steps)

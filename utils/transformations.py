@@ -6,6 +6,7 @@ from utils.math_util import get_random_rotation
 class RandomHoriRotate:
     """
     Randomly rotate the horizontal plane.
+    Supports both single vector and sequence targets.
     """
     def __init__(self, random_angle):
         self.random_angle = random_angle
@@ -15,17 +16,16 @@ class RandomHoriRotate:
         Args:
             feature: (N, 6) [gyro, acce]
             target: (2,) or (3,) [vx, vy] or [vx, vy, vz]
+                    OR (N, 2) or (N, 3) for sequences
         """
-        # 生成随机旋转 (绕 Z 轴)
+        # Generate random rotation (Z-axis)
         angle = np.random.uniform(-self.random_angle, self.random_angle)
         q = quaternion.from_rotation_vector([0, 0, angle])
         
-        # 旋转 Feature (IMU)
-        # feature 是 (N, 6)，前3是gyro，后3是acce
+        # Rotate Feature (IMU) (N, 6)
         gyro = feature[:, :3]
         acce = feature[:, 3:]
         
-        # 将 vector 转换为 quaternion 进行旋转: q * v * q_conj
         gyro_q = quaternion.from_float_array(np.concatenate([np.zeros((gyro.shape[0], 1)), gyro], axis=1))
         acce_q = quaternion.from_float_array(np.concatenate([np.zeros((acce.shape[0], 1)), acce], axis=1))
         
@@ -34,18 +34,32 @@ class RandomHoriRotate:
         
         feature_rotated = np.concatenate([gyro_rotated, acce_rotated], axis=1)
         
-        # 旋转 Target (Velocity)
-        # target 通常是 (2,) 或 (3,)
-        targ_dim = target.shape[0]
-        if targ_dim == 2:
-            # 只有 vx, vy
-            v = np.array([target[0], target[1], 0.0])
-        else:
+        # Rotate Target (Velocity)
+        if target.ndim == 1:
+            # Single vector case (2,) or (3,)
             v = target
+            if v.shape[0] == 2:
+                v = np.array([v[0], v[1], 0.0])
             
-        v_q = quaternion.from_float_array(np.concatenate([[0], v]))
-        v_rotated = quaternion.as_float_array(q * v_q * q.conj())[1:]
-        
-        target_rotated = v_rotated[:targ_dim]
+            v_q = quaternion.from_float_array(np.concatenate([[0], v]))
+            v_rotated = quaternion.as_float_array(q * v_q * q.conj())[1:]
+            target_rotated = v_rotated[:target.shape[0]]
+            
+        else:
+            # Sequence case (N, 2) or (N, 3)
+            v = target
+            is_2d = (v.shape[1] == 2)
+            if is_2d:
+                # Append z=0 column
+                v = np.concatenate([v, np.zeros((v.shape[0], 1))], axis=1)
+            
+            # (N, 3) -> (N, 4) quaternions
+            v_q = quaternion.from_float_array(np.concatenate([np.zeros((v.shape[0], 1)), v], axis=1))
+            v_rotated = quaternion.as_float_array(q * v_q * q.conj())[:, 1:]
+            
+            if is_2d:
+                target_rotated = v_rotated[:, :2]
+            else:
+                target_rotated = v_rotated
         
         return feature_rotated, target_rotated
