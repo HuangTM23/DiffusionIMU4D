@@ -10,7 +10,7 @@
 - [ ] Task: Conductor - User Manual Verification '架构搭建' (Protocol in workflow.md)
 
 ## Phase 2: 扩散训练管线 (Pipeline)
-- [ ] Task: 集成 Diffusers Scheduler
+- [x] Task: 集成 Diffusers Scheduler ac16a07
     - [ ] 创建 `models/diffusion_system.py` 封装 Scheduler 和 U-Net
     - [ ] 实现 `forward` (计算 Loss) 和 `sample` (生成序列) 方法
 - [ ] Task: 升级 Trainer 支持扩散模型
