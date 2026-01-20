@@ -4,7 +4,7 @@
 - [x] Task: 定义 DiffUnet1D 骨干网络 a97a2ee
     - [ ] 编写测试验证 1D U-Net 的输入输出维度
     - [ ] 在 `models/diffusion_unet.py` 中实现基于 1D 卷积和 ResBlock 的 U-Net
-- [ ] Task: 实现条件注入模块 (Conditioning)
+- [x] Task: 实现条件注入模块 (Conditioning) ce4ac5b
     - [ ] 实现 FiLM 或 Cross-Attention 模块
     - [ ] 修改 `ResNet1D` 以支持输出特征图而非最终预测
 - [ ] Task: Conductor - User Manual Verification '架构搭建' (Protocol in workflow.md)
