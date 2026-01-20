@@ -1,1 +1,1 @@
-from .resnet_baseline import ResNet18Baseline
+from .model_resnet1d import ResNet1D
