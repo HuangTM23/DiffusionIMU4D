@@ -13,7 +13,7 @@
 - [x] Task: 集成 Diffusers Scheduler ac16a07
     - [ ] 创建 `models/diffusion_system.py` 封装 Scheduler 和 U-Net
     - [ ] 实现 `forward` (计算 Loss) 和 `sample` (生成序列) 方法
-- [ ] Task: 升级 Trainer 支持扩散模型
+- [x] Task: 升级 Trainer 支持扩散模型 b279b77
     - [ ] 修改 `train.py` (或新建 `train_diff.py`) 以适配噪声预测 Loss
     - [ ] 添加 WandB 采样可视化回调
 - [ ] Task: Conductor - User Manual Verification '训练管线' (Protocol in workflow.md)
