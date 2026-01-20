@@ -173,7 +173,9 @@ class ResNet1D(nn.Module):
         self.residual_groups = nn.Sequential(*groups)
 
         # Output module
-        if output_block is None:
+        if num_outputs is None:
+            self.output_block = nn.Identity()
+        elif output_block is None:
             self.output_block = GlobAvgOutputModule(self.planes[-1] * block_type.expansion, num_outputs)
         else:
             self.output_block = output_block(self.planes[-1] * block_type.expansion, num_outputs, **kwargs)
