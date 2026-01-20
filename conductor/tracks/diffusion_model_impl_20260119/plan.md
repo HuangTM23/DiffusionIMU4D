@@ -9,14 +9,10 @@
     - [ ] 修改 `ResNet1D` 以支持输出特征图而非最终预测
 - [ ] Task: Conductor - User Manual Verification '架构搭建' (Protocol in workflow.md)
 
-## Phase 2: 扩散训练管线 (Pipeline)
+## Phase 2: 扩散训练管线 (Pipeline) [checkpoint: 967be05]
 - [x] Task: 集成 Diffusers Scheduler ac16a07
-    - [ ] 创建 `models/diffusion_system.py` 封装 Scheduler 和 U-Net
-    - [ ] 实现 `forward` (计算 Loss) 和 `sample` (生成序列) 方法
 - [x] Task: 升级 Trainer 支持扩散模型 b279b77
-    - [ ] 修改 `train.py` (或新建 `train_diff.py`) 以适配噪声预测 Loss
-    - [ ] 添加 WandB 采样可视化回调
-- [ ] Task: Conductor - User Manual Verification '训练管线' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification '训练管线' (Protocol in workflow.md) 967be05
 
 ## Phase 3: 变体实现与验证 (Variants & Validation)
 - [ ] Task: 实现 Variant A (Refinement) 逻辑
