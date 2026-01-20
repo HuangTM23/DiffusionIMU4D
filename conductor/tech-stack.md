@@ -26,6 +26,7 @@
 
 *   **核心实验管理**: **WandB (Weights & Biases)**
     *   **用途**: 记录超参数、Loss 曲线、模型版本、消融实验结果对比以及生成的轨迹采样图。
+*   **日志辅助**: `tensorboardX` (用于某些官方组件的兼容性)。
 *   **绘图库**:
     *   `matplotlib`: 基础绘图。
     *   `plotly`: 生成可交互的 3D 轨迹对比图。
@@ -35,6 +36,7 @@
 ## 4. 数据处理与物理计算 (Data Processing & Physics)
 
 *   **基础计算**: `numpy`, `scipy` (用于信号处理和坐标变换)。
+*   **旋转数学**: `numpy-quaternion` (处理四元数旋转)。
 *   **数据管理**: `pandas`, `h5py` / `pickle` (加载 RoNIN 格式数据)。
 *   **物理仿真/积分**: 自定义惯性积分算法 (Inertial Integration)。
 
