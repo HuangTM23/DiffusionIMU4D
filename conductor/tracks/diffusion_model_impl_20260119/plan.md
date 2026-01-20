@@ -15,10 +15,7 @@
 - [x] Task: Conductor - User Manual Verification '训练管线' (Protocol in workflow.md) 967be05
 
 ## Phase 3: 变体实现与验证 (Variants & Validation)
-- [ ] Task: 实现 Variant A (Refinement) 逻辑
-    - [ ] 在数据加载或模型前向中加入 PriorNet 推理
-- [ ] Task: 编写扩散模型配置文件
-    - [ ] 创建 `configs/diffusion_variant_a.yaml` 和 `configs/diffusion_variant_b.yaml`
-- [ ] Task: 跑通小规模训练验证
-    - [ ] 使用 Debug 数据集验证两种变体的收敛性
-- [ ] Task: Conductor - User Manual Verification '变体验证' (Protocol in workflow.md)
+- [x] Task: 实现 Variant A (Refinement) 逻辑 ac16a07
+- [x] Task: 编写扩散模型配置文件 b279b77
+- [x] Task: 跑通小规模训练验证 b279b77
+- [x] Task: Conductor - User Manual Verification '变体验证' (Protocol in workflow.md) b279b77
