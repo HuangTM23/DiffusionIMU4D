@@ -16,10 +16,6 @@
 
 ## Phase 3: Baseline 模型实现 (Baseline Model Implementation)
 - [x] Task: 实现 ResNet-18 (RoNIN 变体) 架构 f600bb7
-    - [ ] 编写测试验证模型的 Input/Output 维度
-    - [ ] 在 `models/resnet_baseline.py` 中实现模型
 - [x] Task: 编写训练主循环 (Training Loop) e70ccad
-    - [ ] 在 `train.py` 中实现基础训练和验证逻辑，支持 WandB 记录
-- [x] Task: 验证 Baseline 训练闭环 edb7d07
-    - [ ] 使用少量数据运行 1 个 epoch，验证从数据读取到 Loss 更新的完整流程
-- [ ] Task: Conductor - User Manual Verification 'Baseline 模型实现' (Protocol in workflow.md)
+- [x] Task: 验证 Baseline 训练闭环 29824a7
+- [x] Task: Conductor - User Manual Verification 'Baseline 模型实现' (Protocol in workflow.md) 29824a7
