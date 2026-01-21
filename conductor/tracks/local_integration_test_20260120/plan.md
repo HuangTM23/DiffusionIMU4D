@@ -1,7 +1,7 @@
 # Implementation Plan - 本地集成测试与验证 (local_integration_test_20260120)
 
 ## Phase 1: 准备过拟合实验 (Setup Overfit)
-- [x] Task: 创建过拟合配置文件 eb23d24
+- [x] Task: 创建过拟合配置文件 7cc92a1
     - [ ] 编写 `configs/local_overfit.yaml`，设置 epoch=50, lr=1e-3, data=list_debug
 - [ ] Task: 运行过拟合训练
     - [ ] 执行 `train_diff.py`
