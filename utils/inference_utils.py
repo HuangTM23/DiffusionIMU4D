@@ -72,3 +72,26 @@ def reconstruct_trajectory(model_func, imu_seq, window_size=200, stride=10, devi
     recon_vel /= weights
     
     return recon_vel
+
+def integrate_trajectory(velocity, initial_pos=None, dt=0.01):
+    """
+    积分速度得到位置。
+    Args:
+        velocity: (L, 3) or (L, 2)
+        initial_pos: (3,) or (2,)
+        dt: float, time step
+    Returns:
+        pos: (L, 3) or (L, 2)
+    """
+    if initial_pos is None:
+        initial_pos = np.zeros(velocity.shape[1])
+        
+    pos = np.zeros_like(velocity)
+    pos[0] = initial_pos
+    
+    # 累加：p_t = p_{t-1} + v_t * dt
+    # 注意：RoNIN 习惯是 v_t 是从 t 到 t+1 的平均速度
+    # 累积和: cumsum
+    pos[1:] = np.cumsum(velocity[:-1] * dt, axis=0) + initial_pos
+    
+    return pos

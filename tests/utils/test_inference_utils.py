@@ -29,5 +29,25 @@ class TestInferenceUtils(unittest.TestCase):
         
         self.assertEqual(recon_vel.shape, (seq_len, 3))
 
+    def test_integrate_trajectory(self):
+        """测试积分逻辑"""
+        from utils.inference_utils import integrate_trajectory
+        
+        # 匀速运动 v=1
+        L = 100
+        dt = 0.1
+        vel = np.ones((L, 3))
+        
+        pos = integrate_trajectory(vel, dt=dt)
+        
+        # p_t = t * v
+        # t=0 -> 0
+        # t=1 -> 0.1
+        # t=99 -> 9.9
+        
+        self.assertAlmostEqual(pos[0, 0], 0.0)
+        self.assertAlmostEqual(pos[10, 0], 1.0) # 10 steps * 0.1
+        self.assertAlmostEqual(pos[-1, 0], (L-1) * dt)
+
 if __name__ == '__main__':
     unittest.main()
