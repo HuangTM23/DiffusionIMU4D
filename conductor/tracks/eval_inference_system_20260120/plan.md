@@ -1,7 +1,7 @@
 # Implementation Plan - 完善评估与推理系统 (eval_inference_system_20260120)
 
 ## Phase 1: 轨迹重建与拼接 (Trajectory Reconstruction)
-- [ ] Task: 实现长序列滑动窗口推理
+- [x] Task: 实现长序列滑动窗口推理 325cba7
     - [ ] 编写 `utils/inference_utils.py`，实现 `reconstruct_trajectory` 函数，支持重叠窗口平均
     - [ ] 编写单元测试验证拼接逻辑的正确性（输入已知序列，检查拼接结果）
 - [ ] Task: 实现位置积分逻辑
