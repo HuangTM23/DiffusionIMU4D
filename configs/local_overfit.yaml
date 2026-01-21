@@ -1,0 +1,19 @@
+# Local Overfit Config (for Sanity Check)
+data_dir: "data/RoNIN/extracted"
+train_list: "data/RoNIN/lists/list_debug.txt"
+val_list: "data/RoNIN/lists/list_debug.txt"
+
+# Evaluation Lists
+test_seen_list: "data/RoNIN/lists/list_debug.txt"
+test_unseen_list: "data/RoNIN/lists/list_debug.txt"
+
+window_size: 200
+stride: 10 # Dense stride to get more samples from short sequence
+batch_size: 16
+lr: 0.001
+epochs: 50
+
+mode: "end2end" # or "residual"
+log_interval: 5
+save_interval: 10
+num_inference_steps: 20 # Speed up sampling
