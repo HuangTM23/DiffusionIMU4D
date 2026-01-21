@@ -120,18 +120,25 @@ def evaluate(args, config):
             # 6. Plotting
             if args.plot:
                 plot_path = os.path.join(results_dir, f"{split_name}_{seq_name}.png")
-                save_plot(gt_pos, pred_pos, seq_name, ate, rte, plot_path)
+                err_path = os.path.join(results_dir, f"{split_name}_{seq_name}_error.png")
+                save_trajectory_plot(gt_pos, pred_pos, seq_name, ate, rte, plot_path)
+                save_error_plot(gt_pos, pred_pos, seq_name, err_path)
                 
     # 7. Save Summary
     df = pd.DataFrame(all_metrics)
     summary_path = os.path.join(results_dir, "metrics.csv")
     df.to_csv(summary_path, index=False)
     
+    # 8. Global Distribution Plot
+    if args.plot and not df.empty:
+        dist_path = os.path.join(results_dir, "error_distribution.png")
+        save_distribution_plot(df, dist_path)
+    
     print("\nEvaluation Summary:")
     print(df.groupby('split')[['ate', 'rte']].mean())
     print(f"Results saved to {results_dir}")
 
-def save_plot(gt_pos, pred_pos, seq_name, ate, rte, path):
+def save_trajectory_plot(gt_pos, pred_pos, seq_name, ate, rte, path):
     plt.figure(figsize=(8, 8))
     plt.plot(gt_pos[:, 0], gt_pos[:, 1], label='Ground Truth', color='black', alpha=0.5)
     plt.plot(pred_pos[:, 0], pred_pos[:, 1], label='Predicted', color='red', alpha=0.8)
@@ -139,6 +146,36 @@ def save_plot(gt_pos, pred_pos, seq_name, ate, rte, path):
     plt.axis('equal')
     plt.legend()
     plt.grid(True)
+    plt.savefig(path)
+    plt.close()
+
+def save_error_plot(gt_pos, pred_pos, seq_name, path):
+    # Compute Euclidean distance at each step
+    errors = np.linalg.norm(gt_pos - pred_pos[:, :2], axis=1)
+    
+    plt.figure(figsize=(10, 4))
+    plt.plot(errors, color='blue')
+    plt.title(f"Position Error over Time - {seq_name}")
+    plt.xlabel("Step")
+    plt.ylabel("Error (m)")
+    plt.grid(True)
+    plt.savefig(path)
+    plt.close()
+
+def save_distribution_plot(df, path):
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+    
+    # ATE Distribution
+    df['ate'].hist(ax=axes[0], bins=20, color='skyblue', edgecolor='black')
+    axes[0].set_title("ATE Distribution")
+    axes[0].set_xlabel("ATE (m)")
+    
+    # RTE Distribution
+    df['rte'].hist(ax=axes[1], bins=20, color='salmon', edgecolor='black')
+    axes[1].set_title("RTE Distribution")
+    axes[1].set_xlabel("RTE (m/min)")
+    
+    plt.tight_layout()
     plt.savefig(path)
     plt.close()
 
