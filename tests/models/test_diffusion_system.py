@@ -35,27 +35,31 @@ class TestDiffusionSystem(unittest.TestCase):
         self.assertGreater(loss.item(), 0)
 
     def test_forward_residual(self):
-        """测试 Residual 模式下的 Loss 计算"""
-        # Residual 模式需要 Encoder 输出速度(3通道)，而不是特征(512通道)
-        # 这里我们需要用一个带输出头的 Encoder
-        from models.model_resnet1d import FCOutputModule
-        encoder_with_head = ResNet1D(6, 3, BasicBlock1D, [2, 2, 2, 2], output_block=FCOutputModule)
+        """测试 Residual 模式下的 Loss 计算和残差逻辑"""
+        # 强制设置 mode 为 residual
+        system = DiffusionSystem(self.encoder, self.unet, mode="residual").to(self.device)
         
-        # Residual 模式下，UNet 的条件可能是 IMU 特征，也可能是 Prior 速度。
-        # 简单起见，假设 Residual 模式下 UNet 仍使用 Encoder 的中间特征作为条件，
-        # 或者我们需要修改 System 逻辑以支持提取中间层。
-        # 鉴于 ResNet1D 实现没暴露中间层，我们暂时假设 Residual 模式下:
-        # 1. Encoder 输出 v_prior
-        # 2. 我们需要另一个 Encoder (或同一个 Encoder 的修改版) 来提供 UNet 条件。
-        # 为了简化测试，这里先测试系统是否能接受带输出头的 Encoder 并跑通。
+        imu = torch.randn(2, 6, 200).to(self.device)
+        gt_vel = torch.randn(2, 3, 200).to(self.device)
         
-        # *修正策略*: 为了灵活性，DiffusionSystem 应该负责调用 Encoder。
-        # 如果是 Residual 模式，System 需要从 Encoder 获取 v_prior。
-        # 我们的 ResNet1D 目前要么输出特征，要么输出速度，不能同时输出。
-        # 解决方案: 我们可以让 Encoder 始终输出特征，然后加一个简单的 Head 在 System 里，或者修改 ResNet1D。
-        # 暂且假设 System 能处理。
+        # 1. 测试前向传播是否产生 Loss
+        loss = system(imu, gt_vel)
+        self.assertGreater(loss.item(), 0)
         
-        pass 
+        # 2. 验证内部逻辑：确认 prior_head 存在且输出维度正确
+        self.assertTrue(hasattr(system, 'prior_head'))
+        cond_feat = system.encoder(imu)
+        v_prior_feat = system.prior_head(cond_feat)
+        v_prior = torch.nn.functional.interpolate(v_prior_feat, size=200, mode='linear', align_corners=False)
+        self.assertEqual(v_prior.shape, (2, 3, 200))
+
+    def test_sample_residual(self):
+        """测试 Residual 模式下的采样（应包含 v_prior 加和）"""
+        system = DiffusionSystem(self.encoder, self.unet, mode="residual").to(self.device)
+        imu = torch.randn(1, 6, 200).to(self.device)
+        
+        sampled_vel = system.sample(imu, num_inference_steps=5)
+        self.assertEqual(sampled_vel.shape, (1, 3, 200))
 
     def test_sample(self):
         """测试采样生成"""

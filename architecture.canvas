@@ -1,0 +1,235 @@
+{
+	"nodes": [
+		{
+			"id": "input_imu",
+			"type": "text",
+			"x": 0,
+			"y": 300,
+			"width": 200,
+			"height": 100,
+			"text": "**Input: IMU Sequence**\n\nShape: `(B, 6, L)`\n\nChannels:\n- Gyro (x,y,z)\n- Accel (x,y,z)",
+			"color": "2"
+		},
+		{
+			"id": "encoder",
+			"type": "group",
+			"x": 300,
+			"y": 150,
+			"width": 400,
+			"height": 400,
+			"label": "Condition Encoder",
+			"color": "4"
+		},
+		{
+			"id": "resnet1d",
+			"type": "text",
+			"x": 350,
+			"y": 250,
+			"width": 300,
+			"height": 150,
+			"text": "**ResNet1D**\n\n- Modified ResNet-18\n- 1D Convolutions\n- No Global Pooling\n- Output: Feature Map"
+		},
+		{
+			"id": "proj_head",
+			"type": "text",
+			"x": 350,
+			"y": 450,
+			"width": 300,
+			"height": 80,
+			"text": "**Projection Head**\n\n`Conv1d(512, 3, 1)`\n*(Only in Residual Mode)*"
+		},
+		{
+			"id": "feat_map",
+			"type": "text",
+			"x": 800,
+			"y": 200,
+			"width": 200,
+			"height": 100,
+			"text": "**Condition Features**\n\nShape: `(B, 512, L/32)`",
+			"color": "5"
+		},
+		{
+			"id": "v_prior",
+			"type": "text",
+			"x": 800,
+			"y": 450,
+			"width": 200,
+			"height": 100,
+			"text": "**Prior Velocity**\n\n`v_prior`\nShape: `(B, 3, L)`",
+			"color": "5"
+		},
+		{
+			"id": "diffusion_process",
+			"type": "group",
+			"x": 1100,
+			"y": 50,
+			"width": 500,
+			"height": 600,
+			"label": "Diffusion Process",
+			"color": "6"
+		},
+		{
+			"id": "unet",
+			"type": "text",
+			"x": 1150,
+			"y": 200,
+			"width": 400,
+			"height": 200,
+			"text": "**DiffUNet1D**\n\n- Inputs: `x_t`, `t`, `cond`\n- Layers: ResBlock + Attention/FiLM\n- Prediction: Noise `epsilon`"
+		},
+		{
+			"id": "noise_sample",
+			"type": "text",
+			"x": 1150,
+			"y": 100,
+			"width": 200,
+			"height": 80,
+			"text": "**Noise / Noisy State**\n\n`x_t` ~ N(0, I)"
+		},
+		{
+			"id": "time_emb",
+			"type": "text",
+			"x": 1400,
+			"y": 100,
+			"width": 150,
+			"height": 80,
+			"text": "**Time Step**\n\n`t` (Sinusoidal)"
+		},
+		{
+			"id": "scheduler",
+			"type": "text",
+			"x": 1150,
+			"y": 450,
+			"width": 400,
+			"height": 150,
+			"text": "**Scheduler (DDPM/DDIM)**\n\n- Training: Add Noise\n- Sampling: Denoise Step\n`x_{t-1} = step(eps, t, x_t)`"
+		},
+		{
+			"id": "output_vel",
+			"type": "text",
+			"x": 1700,
+			"y": 300,
+			"width": 200,
+			"height": 100,
+			"text": "**Output Velocity**\n\n`v_pred`\nShape: `(B, 3, L)`",
+			"color": "2"
+		},
+		{
+			"id": "loss_calc",
+			"type": "text",
+			"x": 1700,
+			"y": 500,
+			"width": 200,
+			"height": 100,
+			"text": "**Loss Calculation**\n\n`MSE(eps_pred, eps_gt)`\n`+ MSE(v_prior, v_gt)`",
+			"color": "3"
+		},
+        {
+			"id": "variant_a_label",
+			"type": "text",
+			"x": 800,
+			"y": 600,
+			"width": 200,
+			"height": 60,
+			"text": "**Variant A**\n(Residual Mode)",
+			"color": "1"
+		},
+        {
+			"id": "variant_b_label",
+			"type": "text",
+			"x": 800,
+			"y": 100,
+			"width": 200,
+			"height": 60,
+			"text": "**Variant B**\n(End-to-End Mode)",
+			"color": "1"
+		}
+	],
+	"edges": [
+		{
+			"id": "e1",
+			"fromNode": "input_imu",
+			"fromSide": "right",
+			"toNode": "resnet1d",
+			"toSide": "left"
+		},
+		{
+			"id": "e2",
+			"fromNode": "resnet1d",
+			"fromSide": "right",
+			"toNode": "feat_map",
+			"toSide": "left",
+			"label": "Extract Features"
+		},
+		{
+			"id": "e3",
+			"fromNode": "resnet1d",
+			"fromSide": "bottom",
+			"toNode": "proj_head",
+			"toSide": "top"
+		},
+		{
+			"id": "e4",
+			"fromNode": "proj_head",
+			"fromSide": "right",
+			"toNode": "v_prior",
+			"toSide": "left",
+			"label": "Predict Coarse Vel",
+			"color": "5"
+		},
+		{
+			"id": "e5",
+			"fromNode": "feat_map",
+			"fromSide": "right",
+			"toNode": "unet",
+			"toSide": "left",
+			"label": "Conditioning (FiLM)"
+		},
+		{
+			"id": "e6",
+			"fromNode": "noise_sample",
+			"fromSide": "bottom",
+			"toNode": "unet",
+			"toSide": "top"
+		},
+		{
+			"id": "e7",
+			"fromNode": "time_emb",
+			"fromSide": "bottom",
+			"toNode": "unet",
+			"toSide": "top"
+		},
+		{
+			"id": "e8",
+			"fromNode": "unet",
+			"fromSide": "bottom",
+			"toNode": "scheduler",
+			"toSide": "top",
+			"label": "Pred Noise"
+		},
+		{
+			"id": "e9",
+			"fromNode": "scheduler",
+			"fromSide": "right",
+			"toNode": "output_vel",
+			"toSide": "left",
+			"label": "Denoised Sample"
+		},
+		{
+			"id": "e10",
+			"fromNode": "v_prior",
+			"fromSide": "right",
+			"toNode": "output_vel",
+			"toSide": "bottom",
+			"label": "Add Residual (Mode A)",
+			"color": "5"
+		},
+		{
+			"id": "e11",
+			"fromNode": "output_vel",
+			"fromSide": "bottom",
+			"toNode": "loss_calc",
+			"toSide": "top"
+		}
+	]
+}
