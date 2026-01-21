@@ -11,8 +11,6 @@
 - [x] Task: 验证评估脚本 213dcaf
 - [x] Task: Conductor - User Manual Verification '评估脚本' (Protocol in workflow.md) 213dcaf
 
-## Phase 3: 可视化与报告 (Visualization)
-- [ ] Task: 实现批量绘图功能
-    - [ ] 为每个测试序列生成 GT vs Pred 轨迹图
-    - [ ] 生成误差分布图
-- [ ] Task: Conductor - User Manual Verification '可视化' (Protocol in workflow.md)
+## Phase 3: 可视化与报告 (Visualization) [checkpoint: 41bff5f]
+- [x] Task: 实现批量绘图功能 41bff5f
+- [x] Task: Conductor - User Manual Verification '可视化' (Protocol in workflow.md) 41bff5f
