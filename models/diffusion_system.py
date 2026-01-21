@@ -36,6 +36,33 @@ class DiffusionSystem(nn.Module):
             # 这里的 512 是硬编码的，实际应用中最好动态获取
             self.prior_head = nn.Conv1d(512, 3, kernel_size=1) 
 
+    def set_scheduler(self, scheduler_type="ddpm", **kwargs):
+        """
+        Switch scheduler type (ddpm or ddim).
+        """
+        if scheduler_type == "ddpm":
+            self.scheduler = DDPMScheduler(
+                num_train_timesteps=1000,
+                beta_start=0.0001,
+                beta_end=0.02,
+                beta_schedule="linear",
+                prediction_type="epsilon",
+                clip_sample=False,
+                **kwargs
+            )
+        elif scheduler_type == "ddim":
+            self.scheduler = DDIMScheduler(
+                num_train_timesteps=1000,
+                beta_start=0.0001,
+                beta_end=0.02,
+                beta_schedule="linear",
+                prediction_type="epsilon",
+                clip_sample=False,
+                **kwargs
+            )
+        else:
+            raise ValueError(f"Unknown scheduler type {scheduler_type}")
+
     def forward(self, imu, gt_vel):
         """
         Training forward pass.

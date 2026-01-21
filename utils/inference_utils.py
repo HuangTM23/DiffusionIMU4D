@@ -49,10 +49,11 @@ def reconstruct_trajectory(model_func, imu_seq, window_size=200, stride=10, devi
             batch_out_np = batch_out.permute(0, 2, 1).cpu().numpy() # (B, W, 3)
             outputs.append(batch_out_np)
             
-    outputs = np.concatenate(outputs, axis=0) # (N, W, 3)
+    outputs = np.concatenate(outputs, axis=0) # (N, W, C)
+    C = outputs.shape[2]
     
     # 3. 拼接与平滑 (Weighted Average)
-    recon_vel = np.zeros((L, 3))
+    recon_vel = np.zeros((L, C))
     weights = np.zeros((L, 1))
     
     # 使用三角形权重窗口以平滑边界
