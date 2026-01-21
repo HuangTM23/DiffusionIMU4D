@@ -5,16 +5,11 @@
 - [x] Task: 实现位置积分逻辑 55fb1e7
 - [x] Task: Conductor - User Manual Verification '轨迹重建' (Protocol in workflow.md) 1b7c8b7
 
-## Phase 2: 全量评估脚本 (Evaluation Script)
-- [ ] Task: 编写 `test_diff.py`
-    - [ ] 支持加载模型、遍历测试列表
-    - [ ] 集成 `reconstruct_trajectory`
-    - [ ] 计算 ATE/RTE 并保存结果
-- [ ] Task: 集成 DDIM 采样器
-    - [ ] 在 `test_diff.py` 和 `DiffusionSystem` 中添加 Scheduler 切换逻辑
-- [ ] Task: 验证评估脚本
-    - [ ] 使用 Debug 模型和少量数据跑通评估流程
-- [ ] Task: Conductor - User Manual Verification '评估脚本' (Protocol in workflow.md)
+## Phase 2: 全量评估脚本 (Evaluation Script) [checkpoint: 213dcaf]
+- [x] Task: 编写 test_diff.py 213dcaf
+- [x] Task: 集成 DDIM 采样器 213dcaf
+- [x] Task: 验证评估脚本 213dcaf
+- [x] Task: Conductor - User Manual Verification '评估脚本' (Protocol in workflow.md) 213dcaf
 
 ## Phase 3: 可视化与报告 (Visualization)
 - [ ] Task: 实现批量绘图功能
