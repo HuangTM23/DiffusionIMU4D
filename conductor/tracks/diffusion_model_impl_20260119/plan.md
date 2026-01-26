@@ -2,12 +2,12 @@
 
 ## Phase 1: 扩散模型架构搭建 (Architecture)
 - [x] Task: 定义 DiffUnet1D 骨干网络 a97a2ee
-    - [ ] 编写测试验证 1D U-Net 的输入输出维度
-    - [ ] 在 `models/diffusion_unet.py` 中实现基于 1D 卷积和 ResBlock 的 U-Net
+    - [x] 编写测试验证 1D U-Net 的输入输出维度
+    - [x] 在 `models/diffusion_unet.py` 中实现基于 1D 卷积和 ResBlock 的 U-Net
 - [x] Task: 实现条件注入模块 (Conditioning) ce4ac5b
-    - [ ] 实现 FiLM 或 Cross-Attention 模块
-    - [ ] 修改 `ResNet1D` 以支持输出特征图而非最终预测
-- [ ] Task: Conductor - User Manual Verification '架构搭建' (Protocol in workflow.md)
+    - [x] 实现 FiLM 或 Cross-Attention 模块
+    - [x] 修改 `ResNet1D` 以支持输出特征图而非最终预测
+- [x] Task: Conductor - User Manual Verification '架构搭建' (Protocol in workflow.md)
 
 ## Phase 2: 扩散训练管线 (Pipeline) [checkpoint: 967be05]
 - [x] Task: 集成 Diffusers Scheduler ac16a07

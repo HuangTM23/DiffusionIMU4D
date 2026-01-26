@@ -10,3 +10,5 @@ This file tracks all major tracks for the project. Each track has its own detail
   *Link: [./tracks/diffusion_model_impl_20260119/](./tracks/diffusion_model_impl_20260119/)*
 - [x] **Track: 完善评估与推理系统**
   *Link: [./tracks/eval_inference_system_20260120/](./tracks/eval_inference_system_20260120/)*
+- [~] **Track: 本地集成测试与验证**
+  *Link: [./tracks/local_integration_test_20260120/](./tracks/local_integration_test_20260120/)*

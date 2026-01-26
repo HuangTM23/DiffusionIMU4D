@@ -4,8 +4,8 @@ train_list: "data/RoNIN/lists/list_debug.txt"
 val_list: "data/RoNIN/lists/list_debug.txt"
 
 window_size: 200
-stride: 10
-batch_size: 4  # Small batch size
+stride: 100
+batch_size: 128  # Small batch size
 lr: 0.001
 epochs: 50
 

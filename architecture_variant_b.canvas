@@ -1,0 +1,99 @@
+{
+  "nodes": [
+    {
+      "id": "group_b",
+      "type": "group",
+      "x": 0,
+      "y": 0,
+      "width": 1400,
+      "height": 900,
+      "label": "Variant B: End-to-End Conditional (Mode: 'end2end')",
+      "color": "4"
+    },
+    {
+      "id": "node_input_imu",
+      "type": "text",
+      "x": 50,
+      "y": 250,
+      "width": 250,
+      "height": 100,
+      "text": "**IMU Input**\n(B, 6, L)"
+    },
+    {
+      "id": "node_encoder",
+      "type": "text",
+      "x": 400,
+      "y": 250,
+      "width": 250,
+      "height": 150,
+      "text": "**ResNet1D**\n(Encoder)\nFeat: (B, 512, L/32)",
+      "color": "5"
+    },
+    {
+      "id": "node_unet",
+      "type": "text",
+      "x": 800,
+      "y": 250,
+      "width": 300,
+      "height": 200,
+      "text": "**Diffusion U-Net**\nCondition: ResNet Features\nPredicts: Noise (Full Velocity)",
+      "color": "5"
+    },
+    {
+      "id": "node_gt",
+      "type": "text",
+      "x": 800,
+      "y": 50,
+      "width": 200,
+      "height": 100,
+      "text": "**GT Velocity**\n(Ground Truth)"
+    },
+    {
+      "id": "node_inference",
+      "type": "text",
+      "x": 1150,
+      "y": 250,
+      "width": 200,
+      "height": 150,
+      "text": "**Final Output**\nDirectly Denoised Velocity",
+      "color": "4"
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge_1",
+      "fromNode": "node_input_imu",
+      "fromSide": "right",
+      "toNode": "node_encoder",
+      "toSide": "left",
+      "toEnd": "arrow"
+    },
+    {
+      "id": "edge_2",
+      "fromNode": "node_encoder",
+      "fromSide": "right",
+      "toNode": "node_unet",
+      "toSide": "left",
+      "toEnd": "arrow",
+      "label": "Condition"
+    },
+    {
+      "id": "edge_3",
+      "fromNode": "node_gt",
+      "fromSide": "bottom",
+      "toNode": "node_unet",
+      "toSide": "top",
+      "toEnd": "arrow",
+      "label": "Target (Training)"
+    },
+    {
+      "id": "edge_4",
+      "fromNode": "node_unet",
+      "fromSide": "right",
+      "toNode": "node_inference",
+      "toSide": "left",
+      "toEnd": "arrow",
+      "label": "Sampled Output"
+    }
+  ]
+}

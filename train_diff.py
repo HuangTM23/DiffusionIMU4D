@@ -58,6 +58,7 @@ def main(config, args):
     init_logger(project_name="Diffusion4d-Diff", config=config)
     
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    print(f"Training on Device: {device}")
     
     # 1. Dataset
     train_dataset = get_dataset_from_list(config['data_dir'], config['train_list'], config, mode='train')
@@ -101,12 +102,24 @@ def main(config, args):
     optimizer = optim.Adam(system.parameters(), lr=config['lr'])
     
     # 3. Training Loop
+    import time
+    print(f"Start Training... Total Epochs: {config['epochs']}")
     for epoch in range(config['epochs']):
+        epoch_start_time = time.time()
         system.train()
         train_loss = 0
-        pbar = tqdm(train_loader, desc=f"Epoch {epoch}")
         
-        for i, (imu, vel, _, _) in enumerate(pbar):
+        # print(f"--- Starting Epoch {epoch} ---", flush=True)
+        iterator = iter(train_loader)
+        
+        i = 0
+        while True:
+            try:
+                batch = next(iterator)
+                imu, vel, _, _ = batch
+            except StopIteration:
+                break
+            
             if args.dry_run and i > 2: break
             
             # (B, L, C) -> (B, C, L)
@@ -115,17 +128,22 @@ def main(config, args):
             
             optimizer.zero_grad()
             loss = system(imu, vel)
+            
             loss.backward()
             optimizer.step()
             
             train_loss += loss.item()
-            pbar.set_postfix({"loss": loss.item()})
             
-            if i % config['log_interval'] == 0:
-                log_metrics({"train_loss": loss.item()}, step=epoch * len(train_loader) + i)
+            # if i % config['log_interval'] == 0:
+            #     print(f"  [Epoch {epoch}][Batch {i}] Loss: {loss.item():.4f}", flush=True)
+            #     log_metrics({"train_loss": loss.item()}, step=epoch * len(train_loader) + i)
+            
+            i += 1
                 
-        avg_train_loss = train_loss / (len(train_loader) if not args.dry_run else 3)
-        print(f"Epoch {epoch}: Train Loss={avg_train_loss:.6f}")
+        avg_train_loss = train_loss / (i if i > 0 else 1)
+        epoch_duration = time.time() - epoch_start_time
+        print(f"Epoch {epoch} Finished. Duration: {epoch_duration:.2f}s | Avg Loss: {avg_train_loss:.6f}", flush=True)
+        log_metrics({"epoch": epoch, "train_loss": avg_train_loss})
         
         # Validation & Sampling
         if (epoch + 1) % config['save_interval'] == 0 or args.dry_run:
@@ -194,11 +212,19 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--config', type=str, default='configs/diffusion.yaml')
     parser.add_argument('--dry_run', action='store_true', help="Run a few batches for debugging")
+    parser.add_argument('--epochs', type=int, help="Override epochs in config")
+    parser.add_argument('--lr', type=float, help="Override learning rate in config")
+    parser.add_argument('--batch_size', type=int, help="Override batch size in config")
     args = parser.parse_args()
     
     if os.path.exists(args.config):
         with open(args.config, 'r') as f:
             config = yaml.safe_load(f)
+        
+        if args.epochs: config['epochs'] = args.epochs
+        if args.lr: config['lr'] = args.lr
+        if args.batch_size: config['batch_size'] = args.batch_size
+            
         main(config, args)
     else:
         print(f"Config file {args.config} not found.")
