@@ -41,8 +41,23 @@ pip install -r requirements.txt
 
 ### 2. Data Preparation
 This project uses the **RoNIN Dataset**.
-*   Download the data and place it in `data/RoNIN/extracted/`.
-*   Ensure list files exist in `data/RoNIN/lists/`.
+
+1.  **Download Data**:
+    *   Visit the [RoNIN Project Website](http://ronin.cs.sfu.ca/) or [Data Repository](https://doi.org/10.20383/102.0543) to download the dataset.
+2.  **Extract & Place**:
+    *   Extract the downloaded data into `data/RoNIN/extracted/`.
+    *   **Expected Directory Structure** (each sequence is a folder containing `data.hdf5` and `info.json`):
+        ```text
+        data/RoNIN/extracted/
+        ├── a001_1/
+        │   ├── data.hdf5
+        │   └── info.json
+        ├── a001_2/
+        ...
+        ```
+3.  **Verify Lists**:
+    *   Ensure the sequence names in `data/RoNIN/lists/list_train.txt` (e.g., `a001_1`) match the folders you actually have.
+    *   *Note: The public RoNIN dataset might not contain all sequences listed in the default full lists. If you encounter a FileNotFoundError, please remove the missing sequence names from the txt lists.*
 
 ### 3. Training
 **Train Residual Scheme (Recommended First):**

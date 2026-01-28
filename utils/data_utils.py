@@ -9,6 +9,7 @@ import os
 import warnings
 from os import path as osp
 import sys
+from joblib import Parallel, delayed
 
 from utils.math_util import gyro_integration
 
@@ -59,6 +60,35 @@ class CompiledSequence(ABC):
         return "No info available"
 
 
+def load_single_sequence(seq_type, root_dir, seq_name, cache_path, **kwargs):
+    """
+    Helper function to load a single sequence, used for parallel processing.
+    """
+    if cache_path is not None and osp.exists(osp.join(cache_path, seq_name + '.hdf5')):
+        with h5py.File(osp.join(cache_path, seq_name + '.hdf5'), 'r') as f:
+            feat = np.copy(f['feature'])
+            targ = np.copy(f['target'])
+            aux = np.copy(f['aux'])
+            # No meta info printed when loading from cache to reduce spam in parallel mode
+            return feat, targ, aux
+    else:
+        seq = seq_type(osp.join(root_dir, seq_name), **kwargs)
+        feat, targ, aux = seq.get_feature(), seq.get_target(), seq.get_aux()
+        print(seq.get_meta()) # Print meta info when loading raw data
+        
+        if cache_path is not None and osp.isdir(cache_path):
+            try:
+                with h5py.File(osp.join(cache_path, seq_name + '.hdf5'), 'x') as f:
+                    f['feature'] = feat
+                    f['target'] = targ
+                    f['aux'] = aux
+            except OSError as e:
+                # Handle potential race conditions or file access issues gracefully
+                print(f"Warning: Could not cache sequence {seq_name}: {e}")
+        
+        return feat, targ, aux
+
+
 def load_cached_sequences(seq_type, root_dir, data_list, cache_path, **kwargs):
     grv_only = kwargs.get('grv_only', True)
 
@@ -81,29 +111,26 @@ def load_cached_sequences(seq_type, root_dir, data_list, cache_path, **kwargs):
                     'aux_dim': seq_type.aux_dim, 'grv_only': str(grv_only)}
             json.dump(info, open(osp.join(cache_path, 'config.json'), 'w'))
 
-    features_all, targets_all, aux_all = [], [], []
-    for i in range(len(data_list)):
-        if cache_path is not None and osp.exists(osp.join(cache_path, data_list[i] + '.hdf5')):
-            with h5py.File(osp.join(cache_path, data_list[i] + '.hdf5')) as f:
-                feat = np.copy(f['feature'])
-                targ = np.copy(f['target'])
-                aux = np.copy(f['aux'])
-        else:
-            seq = seq_type(osp.join(root_dir, data_list[i]), **kwargs)
-            feat, targ, aux = seq.get_feature(), seq.get_target(), seq.get_aux()
-            print(seq.get_meta())
-            if cache_path is not None and osp.isdir(cache_path):
-                with h5py.File(osp.join(cache_path, data_list[i] + '.hdf5'), 'x') as f:
-                    f['feature'] = feat
-                    f['target'] = targ
-                    f['aux'] = aux
-        features_all.append(feat)
-        targets_all.append(targ)
-        aux_all.append(aux)
-    return features_all, targets_all, aux_all
+    # Parallel data loading
+    # Use n_jobs=-1 to use all available cores, or set a specific number like 16
+    # Prefer 'loky' backend for stability with h5py, though 'threading' might be faster for I/O bound if GIL isn't an issue.
+    # Given the heavy numpy and h5py usage, 'loky' (process-based) is generally safer but has higher overhead.
+    # Let's use n_jobs=16 as requested/suggested for 64GB RAM servers, but capped by CPU count internally by joblib usually.
+    # Set verbose=5 to see progress.
+    
+    print(f"Loading {len(data_list)} sequences with parallel processing...")
+    results = Parallel(n_jobs=16, verbose=5, backend="loky")(
+        delayed(load_single_sequence)(seq_type, root_dir, seq_name, cache_path, **kwargs)
+        for seq_name in data_list
+    )
+    
+    features_all, targets_all, aux_all = zip(*results)
+    
+    return list(features_all), list(targets_all), list(aux_all)
 
 
 def select_orientation_source(data_path, max_ori_error=20.0, grv_only=True, use_ekf=True):
+
     """
     Select orientation from one of gyro integration, game rotation vector or EKF orientation.
 

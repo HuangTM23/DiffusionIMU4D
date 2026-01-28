@@ -41,8 +41,23 @@ pip install -r requirements.txt
 
 ### 2. 数据准备
 本项目使用 **RoNIN 数据集**。
-*   下载数据并放置在 `data/RoNIN/extracted/`。
-*   确保列表文件存在于 `data/RoNIN/lists/`。
+
+1.  **下载数据**：
+    *   请访问 [RoNIN 项目官网](http://ronin.cs.sfu.ca/) 或 [数据发布页](https://doi.org/10.20383/102.0543) 下载数据集。
+2.  **解压与放置**：
+    *   将下载的数据解压并放置在 `data/RoNIN/extracted/` 目录下。
+    *   **预期目录结构**应如下所示（每个序列一个文件夹，包含 `data.hdf5` 和 `info.json`）：
+        ```text
+        data/RoNIN/extracted/
+        ├── a001_1/
+        │   ├── data.hdf5
+        │   └── info.json
+        ├── a001_2/
+        ...
+        ```
+3.  **列表文件检查**：
+    *   确保 `data/RoNIN/lists/` 下的 `list_train.txt` 等文件中的序列名称（如 `a001_1`）与您实际下载并解压的文件夹名称一致。
+    *   *注意：RoNIN 公开数据集可能不包含完整列表中的所有序列。如果遇到 FileNotFoundError，请从 txt 列表中删除缺失的序列名。*
 
 ### 3. 训练
 **训练残差方案 (推荐优先尝试):**
