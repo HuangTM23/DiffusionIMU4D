@@ -1,8 +1,0 @@
-{
-  "track_id": "local_integration_test_20260120",
-  "type": "test",
-  "status": "new",
-  "created_at": "2026-01-20T01:00:00Z",
-  "updated_at": "2026-01-20T01:00:00Z",
-  "description": "本地集成测试与验证"
-}
