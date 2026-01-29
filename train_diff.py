@@ -51,18 +51,39 @@ def get_dataset(root_dir, data_list, config, mode='train'):
 def get_dataset_from_list(root_dir, list_path, config, mode='train'):
     with open(list_path) as f:
         data_list = [s.strip().split(',' or ' ')[0] for s in f.readlines() if len(s) > 0 and s[0] != '#']
+    print(f"DEBUG: Loaded {len(data_list)} items from {list_path}. First 3: {data_list[:3]}")
     return get_dataset(root_dir, data_list, config, mode=mode)
 
 def main(config, args):
+    # Load WandB Config
+    wb_project = "Diffusion4d-Diff"
+    wb_entity = None
+    if os.path.exists('configs/wandb.yaml'):
+        with open('configs/wandb.yaml', 'r') as f:
+            wb_conf = yaml.safe_load(f)
+            wb_project = wb_conf.get('project_name', wb_project)
+            wb_entity = wb_conf.get('entity', None)
+            # Handle empty string as None to use default login
+            if wb_entity == "": 
+                wb_entity = None
+            
+            if 'mode' in wb_conf:
+                os.environ['WANDB_MODE'] = wb_conf['mode']
+                print(f"WandB Mode set to: {wb_conf['mode']}")
+
     # WandB
-    init_logger(project_name="Diffusion4d-Diff", config=config)
+    init_logger(project_name=wb_project, config=config, entity=wb_entity)
     
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f"Training on Device: {device}")
     
     # 1. Dataset
+    print(f"Loading Dataset from: {config['data_dir']} using list: {config['train_list']}")
     train_dataset = get_dataset_from_list(config['data_dir'], config['train_list'], config, mode='train')
+    print(f"Train Dataset Loaded. Size: {len(train_dataset)}")
+    
     val_dataset = get_dataset_from_list(config['data_dir'], config['val_list'], config, mode='val')
+    print(f"Val Dataset Loaded. Size: {len(val_dataset)}")
     
     train_loader = DataLoader(train_dataset, batch_size=config['batch_size'], shuffle=True, num_workers=4)
     val_loader = DataLoader(val_dataset, batch_size=config['batch_size'], shuffle=False, num_workers=4)
@@ -134,9 +155,9 @@ def main(config, args):
             
             train_loss += loss.item()
             
-            # if i % config['log_interval'] == 0:
-            #     print(f"  [Epoch {epoch}][Batch {i}] Loss: {loss.item():.4f}", flush=True)
-            #     log_metrics({"train_loss": loss.item()}, step=epoch * len(train_loader) + i)
+            if i % config['log_interval'] == 0:
+                print(f"  [Epoch {epoch}][Batch {i}/{len(train_loader)}] Loss: {loss.item():.4f}", flush=True)
+                log_metrics({"train_loss": loss.item()}, step=epoch * len(train_loader) + i)
             
             i += 1
                 

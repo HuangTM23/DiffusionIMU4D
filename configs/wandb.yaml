@@ -1,0 +1,10 @@
+# Weights & Biases Configuration
+# ------------------------------------------------------------------
+# project_name: The name of the project on WandB.
+# entity: The username or team name. Leave empty to use default login.
+# mode: "online" or "offline". Set to "offline" for air-gapped runs.
+# ------------------------------------------------------------------
+
+project_name: "Diffusion4d-Diff"
+entity: ""
+mode: "online"

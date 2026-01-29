@@ -1,99 +1,106 @@
 {
-  "nodes": [
-    {
-      "id": "group_b",
-      "type": "group",
-      "x": 0,
-      "y": 0,
-      "width": 1400,
-      "height": 900,
-      "label": "Variant B: End-to-End Conditional (Mode: 'end2end')",
-      "color": "4"
-    },
-    {
-      "id": "node_input_imu",
-      "type": "text",
-      "x": 50,
-      "y": 250,
-      "width": 250,
-      "height": 100,
-      "text": "**IMU Input**\n(B, 6, L)"
-    },
-    {
-      "id": "node_encoder",
-      "type": "text",
-      "x": 400,
-      "y": 250,
-      "width": 250,
-      "height": 150,
-      "text": "**ResNet1D**\n(Encoder)\nFeat: (B, 512, L/32)",
-      "color": "5"
-    },
-    {
-      "id": "node_unet",
-      "type": "text",
-      "x": 800,
-      "y": 250,
-      "width": 300,
-      "height": 200,
-      "text": "**Diffusion U-Net**\nCondition: ResNet Features\nPredicts: Noise (Full Velocity)",
-      "color": "5"
-    },
-    {
-      "id": "node_gt",
-      "type": "text",
-      "x": 800,
-      "y": 50,
-      "width": 200,
-      "height": 100,
-      "text": "**GT Velocity**\n(Ground Truth)"
-    },
-    {
-      "id": "node_inference",
-      "type": "text",
-      "x": 1150,
-      "y": 250,
-      "width": 200,
-      "height": 150,
-      "text": "**Final Output**\nDirectly Denoised Velocity",
-      "color": "4"
-    }
-  ],
-  "edges": [
-    {
-      "id": "edge_1",
-      "fromNode": "node_input_imu",
-      "fromSide": "right",
-      "toNode": "node_encoder",
-      "toSide": "left",
-      "toEnd": "arrow"
-    },
-    {
-      "id": "edge_2",
-      "fromNode": "node_encoder",
-      "fromSide": "right",
-      "toNode": "node_unet",
-      "toSide": "left",
-      "toEnd": "arrow",
-      "label": "Condition"
-    },
-    {
-      "id": "edge_3",
-      "fromNode": "node_gt",
-      "fromSide": "bottom",
-      "toNode": "node_unet",
-      "toSide": "top",
-      "toEnd": "arrow",
-      "label": "Target (Training)"
-    },
-    {
-      "id": "edge_4",
-      "fromNode": "node_unet",
-      "fromSide": "right",
-      "toNode": "node_inference",
-      "toSide": "left",
-      "toEnd": "arrow",
-      "label": "Sampled Output"
-    }
-  ]
+	"nodes": [
+		{
+			"id": "group_variant_b",
+			"type": "group",
+			"x": 0,
+			"y": 0,
+			"width": 1200,
+			"height": 800,
+			"label": "Variant B: End-to-End Conditional Scheme",
+			"color": "2"
+		},
+		{
+			"id": "node_imu_input_b",
+			"type": "text",
+			"x": 50,
+			"y": 350,
+			"width": 200,
+			"height": 100,
+			"text": "**Input: IMU Sequence**\n\nShape: `(B, 6, L)`\nContent: Gyro + Accel",
+			"color": "6"
+		},
+		{
+			"id": "node_resnet_b",
+			"type": "text",
+			"x": 300,
+			"y": 350,
+			"width": 250,
+			"height": 150,
+			"text": "**ResNet1D (Encoder)**\n\n*Type: Feature Extractor*\n\nInput: `(B, 6, L)`\nOutput: `(B, 512, L/32)`\n\n*Purely extracting semantic context*",
+			"color": "2"
+		},
+		{
+			"id": "node_noise_input_b",
+			"type": "text",
+			"x": 600,
+			"y": 150,
+			"width": 200,
+			"height": 100,
+			"text": "**Input: Gaussian Noise**\n\nShape: `(B, 3, L)`\nStep T",
+			"color": "3"
+		},
+		{
+			"id": "node_unet_b",
+			"type": "text",
+			"x": 600,
+			"y": 350,
+			"width": 300,
+			"height": 250,
+			"text": "**DiffUNet1D (Generator)**\n\nInput: Noisy Velocity `(B, 3, L)`\nCond: Feature Map `(B, 512, L/32)`\n\n*Uses Multi-scale FiLM / Interpolation to align features at every layer*",
+			"color": "5"
+		},
+		{
+			"id": "node_output_b",
+			"type": "text",
+			"x": 950,
+			"y": 350,
+			"width": 200,
+			"height": 100,
+			"text": "**Output: Predicted Noise**\n\n(or Sample)\nShape: `(B, 3, L)`",
+			"color": "6"
+		},
+		{
+			"id": "note_objective_b",
+			"type": "text",
+			"x": 50,
+			"y": 600,
+			"width": 400,
+			"height": 150,
+			"text": "### Objective (Loss)\n\n1. **Diffusion Loss**: `MSE(noise_pred, noise)`\n\n*Simple End-to-End objective.\nThe ResNet is trained purely via gradients from the UNet.*",
+			"color": "2"
+		}
+	],
+	"edges": [
+		{
+			"id": "edge_input_to_resnet_b",
+			"fromNode": "node_imu_input_b",
+			"fromSide": "right",
+			"toNode": "node_resnet_b",
+			"toSide": "left"
+		},
+		{
+			"id": "edge_resnet_to_unet_b",
+			"fromNode": "node_resnet_b",
+			"fromSide": "right",
+			"toNode": "node_unet_b",
+			"toSide": "left",
+			"label": "Conditioning (FiLM)",
+			"color": "2"
+		},
+		{
+			"id": "edge_noise_to_unet_b",
+			"fromNode": "node_noise_input_b",
+			"fromSide": "bottom",
+			"toNode": "node_unet_b",
+			"toSide": "top"
+		},
+		{
+			"id": "edge_unet_to_output_b",
+			"fromNode": "node_unet_b",
+			"fromSide": "right",
+			"toNode": "node_output_b",
+			"toSide": "left"
+		}
+	]
 }
