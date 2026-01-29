@@ -1,76 +1,70 @@
 # DiffusionIMU4D
 
-This project implements an **IMU-based Trajectory Estimation** system using **Diffusion Models**, specifically designed to refine or generate 4D trajectories (Velocity + Time) from raw inertial data.
+本项目是一个基于 **扩散模型 (Diffusion Models)** 的 IMU 轨迹估计系统，专门设计用于从原始惯性数据 (Gyro + Accel) 中生成或修正 4D 轨迹 (速度 + 时间)。
 
-It provides two main architectural variants:
-- **Variant A (Residual/Refinement)**: Uses a ResNet1D prior to estimate a coarse trajectory, then uses a Diffusion model to predict the residual errors.
-- **Variant B (End-to-End Conditional)**: Uses a ResNet1D purely as a feature encoder to condition a Diffusion model, which generates the trajectory from noise.
+本项目提供了两种主要的架构变体：
+- **Variant A (残差/修正方案)**: 使用 ResNet1D 作为先验网络 (PriorNet) 估计粗略轨迹，随后使用扩散模型预测残差值。
+- **Variant B (端到端条件生成方案)**: 将 ResNet1D 仅作为特征编码器，通过特征注入 (FiLM) 指导扩散模型从噪声中生成轨迹。
 
-## 📂 Project Structure
+## 📂 项目结构
 
 ```
-├── configs/             # Configuration files for training variants
-├── data/                # Data loading logic and dataset wrappers
-├── models/              # PyTorch model definitions (ResNet1D, DiffUNet1D, DiffusionSystem)
-├── utils/               # Utility functions (Geometry, Logging, Metrics)
-├── train_diff.py        # Main training script
-├── test_diff.py         # Inference and evaluation script
-├── train_ronin.py       # Baseline RoNIN training script
-└── requirements.txt     # Python dependencies
+├── configs/             # 训练配置文件 (Variant A/B, WandB)
+├── data/                # 数据加载逻辑与 Dataset 封装
+├── models/              # 模型定义 (ResNet1D, DiffUNet1D, DiffusionSystem)
+├── utils/               # 工具函数 (几何变换、日志记录、指标计算)
+├── train_diff.py        # 扩散模型训练主脚本
+├── test_diff.py         # 推理与评估脚本
+├── train_ronin.py       # Baseline (RoNIN) 训练脚本
+└── requirements.txt     # 项目依赖
 ```
 
-## 🚀 Quick Start
+## 🚀 快速开始
 
-### 1. Installation
+### 1. 环境安装
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2. Data Preparation
+### 2. 数据准备
 
-Ensure your RoNIN dataset is placed in `data/RoNIN`. The directory structure should look like:
+请将 RoNIN 数据集放置在 `data/RoNIN` 目录下。结构应如下所示：
 ```
 data/RoNIN/
-  ├── extracted/       # Processed .hdf5 files
-  └── lists/          # list_train.txt, list_val.txt, list_test.txt
+  ├── extracted/       # 处理后的 .hdf5 文件
+  └── lists/          # list_train.txt, list_val.txt 等列表文件
 ```
 
-### 3. Training
+### 3. 模型训练
 
-**Variant A (Residual Scheme):**
+**Variant A (残差方案):**
 ```bash
 python train_diff.py --config configs/diffusion_variant_a.yaml
 ```
 
-**Variant B (End-to-End Scheme):**
+**Variant B (端到端方案):**
 ```bash
 python train_diff.py --config configs/diffusion_variant_b.yaml
 ```
 
-### 4. Evaluation / Inference
+### 4. 推理与评估
 
 ```bash
-# Example: Evaluate using the Variant A config and a trained checkpoint
+# 使用训练好的 Checkpoint 进行评估
 python test_diff.py --config configs/diffusion_variant_a.yaml --checkpoint experiments/checkpoints/diff_residual_epoch_99.pth
 ```
 
-## 📊 Configuration (WandB)
+## 📊 实验监控 (WandB)
 
-Weights & Biases logging is configured via `configs/wandb.yaml`.
-You can switch to offline mode or change the project name there.
+Weights & Biases 的日志记录通过 `configs/wandb.yaml` 进行配置。
+你可以在此处修改项目名称或切换离线模式。
 
 ```yaml
 project_name: "Diffusion4d-Diff"
-mode: "online" # or "offline"
+mode: "online" # 或 "offline"
 ```
 
-## 🧠 Architectures
-
-Visual architecture diagrams are available in the root directory:
-- `architecture_variant_a.canvas`
-- `architecture_variant_b.canvas`
-
-## 📄 License
+## 📄 开源协议
 
 MIT
