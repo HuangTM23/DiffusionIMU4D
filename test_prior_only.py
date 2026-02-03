@@ -114,6 +114,13 @@ def evaluate_prior_only(args, config):
             # 5. 计算轨迹
             pred_pos_prior = integrate_trajectory(pred_vel_prior, initial_pos=gt_pos[0], dt=0.005)
             
+            # [Fix] 再次对齐轨迹和GT位置，防止 predict_with_prior_only 内部截断导致的不匹配
+            min_pos_len = min(pred_pos_prior.shape[0], gt_pos.shape[0], gt_vel.shape[0])
+            pred_pos_prior = pred_pos_prior[:min_pos_len]
+            gt_pos = gt_pos[:min_pos_len]
+            gt_vel = gt_vel[:min_pos_len]
+            pred_vel_prior = pred_vel_prior[:min_pos_len]
+            
             # 6. 计算指标
             pred_per_min = 200 * 60
             ate, rte = compute_ate_rte(pred_pos_prior[:, :2], gt_pos, pred_per_min)
