@@ -41,6 +41,10 @@ def evaluate(args, config):
     
     system = DiffusionSystem(encoder, unet, mode=config.get('mode', 'end2end')).to(device)
     
+    # Fix: Update prior_head output dimension for residual mode
+    if config.get('mode') == 'residual' and system.prior_head.out_channels != target_dim:
+        system.prior_head = nn.Conv1d(512, target_dim, kernel_size=1).to(device)
+    
     # Load Weights
     if args.model_path and os.path.exists(args.model_path):
         print(f"Loading model from {args.model_path}")

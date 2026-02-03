@@ -10,22 +10,22 @@
 *   **逻辑**: 使用 ResNet1D 作为先验网络预测一个粗略的速度序列，扩散模型则专注于学习并补偿该先验与真值之间的**残差 (Residual)**。
 *   **训练**:
     ```bash
-    python train_diff.py --config configs/diffusion_variant_a.yaml
+    python3 train_diff.py --config configs/diffusion_variant_a.yaml
     ```
 *   **推理与评估**:
     ```bash
-    python test_diff.py --config configs/diffusion_variant_a.yaml --checkpoint experiments/checkpoints/diff_residual_epoch_99.pth
+    python3 test_diff.py --config configs/diffusion_variant_a.yaml --model_path experiments/checkpoints/diff_residual_epoch_99.pth
     ```
 
 ### 方案 B：端到端条件生成 (End-to-End Conditional)
 *   **逻辑**: ResNet1D 仅作为特征编码器，提取 IMU 的深层语义特征。扩散模型以此为**条件 (Condition)**，直接从高斯噪声中去噪生成最终的速度序列。
 *   **训练**:
     ```bash
-    python train_diff.py --config configs/diffusion_variant_b.yaml
+    python3 train_diff.py --config configs/diffusion_variant_b.yaml
     ```
 *   **推理与评估**:
     ```bash
-    python test_diff.py --config configs/diffusion_variant_b.yaml --checkpoint experiments/checkpoints/diff_end2end_epoch_99.pth
+    python3 test_diff.py --config configs/diffusion_variant_b.yaml --model_path experiments/checkpoints/diff_end2end_epoch_99.pth
     ```
 
 ---
