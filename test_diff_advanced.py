@@ -160,7 +160,7 @@ def reconstruct_autoregressive(system, imu_seq, window_size, stride, device, num
         if mode == 'residual':
             pred_curr = pred_curr + v_prior
             
-        pred_curr_np = pred_curr.squeeze(0).permute(1, 0).cpu().numpy() # (W, C)
+        pred_curr_np = pred_curr.squeeze(0).detach().permute(1, 0).cpu().numpy() # (W, C)
         
         # 更新全局结果
         # 策略：直接覆盖。因为我们强制约束了前部，所以覆盖也不会有跳变
