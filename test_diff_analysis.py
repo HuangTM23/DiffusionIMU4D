@@ -112,6 +112,14 @@ def evaluate_with_analysis(args, config):
             gt_vel = seq_data.get_target()  # (L, 2)
             gt_pos = seq_data.gt_pos[:, :2]  # (L, 2)
             
+            # 对齐长度（features 和 targets 可能差1）
+            min_len = min(imu.shape[0], gt_vel.shape[0], gt_pos.shape[0])
+            if imu.shape[0] != min_len or gt_vel.shape[0] != min_len or gt_pos.shape[0] != min_len:
+                print(f"  Aligning lengths - imu: {imu.shape[0]}, gt_vel: {gt_vel.shape[0]}, gt_pos: {gt_pos.shape[0]} -> {min_len}")
+                imu = imu[:min_len]
+                gt_vel = gt_vel[:min_len]
+                gt_pos = gt_pos[:min_len]
+            
             # 4. 推理
             window_size = config.get('window_size', 200)
             stride = args.stride

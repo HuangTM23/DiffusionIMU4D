@@ -170,6 +170,14 @@ def predict_with_prior_only(system, imu_seq, window_size, stride, device, gt_vel
     L = imu_seq.shape[0]
     target_dim = system.prior_head.out_channels
     
+    # 处理长度不匹配问题（features 和 targets 可能差1）
+    gt_len = gt_vel.shape[0]
+    if L != gt_len:
+        print(f"  Warning: Length mismatch - imu: {L}, gt_vel: {gt_len}, using min")
+        L = min(L, gt_len)
+        imu_seq = imu_seq[:L]
+        gt_vel = gt_vel[:L]
+    
     # 准备窗口
     starts = np.arange(0, L - window_size + 1, stride)
     if starts[-1] + window_size < L:
