@@ -219,6 +219,14 @@ def predict_with_prior_only(system, imu_seq, window_size, stride, device, gt_vel
     weights[weights == 0] = 1.0
     v_prior_full /= weights
     
+    # [Fix] 再次确保长度一致，防止拼接过程中的微小差异
+    min_len = min(gt_vel.shape[0], v_prior_full.shape[0])
+    if gt_vel.shape[0] != v_prior_full.shape[0]:
+        print(f"  [Debug] Truncating shapes for residual: gt {gt_vel.shape} vs prior {v_prior_full.shape} -> {min_len}")
+    
+    gt_vel = gt_vel[:min_len]
+    v_prior_full = v_prior_full[:min_len]
+    
     # 计算残差统计
     residual = gt_vel - v_prior_full
     residual_stats = {
