@@ -44,8 +44,11 @@ def evaluate_prior_only(args, config):
         output_block=None
     )
     
+    # [Modified] Residual 模式输入通道翻倍 (保持与其他脚本一致)
+    unet_in_channels = target_dim * 2 if mode == 'residual' else target_dim
+    
     unet = DiffUNet1D(
-        in_channels=target_dim, 
+        in_channels=unet_in_channels, 
         out_channels=target_dim, 
         cond_channels=512, 
         base_channels=64,

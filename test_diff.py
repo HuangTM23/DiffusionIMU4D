@@ -19,27 +19,27 @@ from utils.metric import compute_ate_rte
 def evaluate(args, config):
     device = torch.device('cuda:0' if torch.cuda.is_available() and not args.cpu else 'cpu')
     
-    # 1. Models
-    input_dim = 6
-    target_dim = config.get('target_dim', 2) # Default to 2 for RoNIN
-    
+    # 2. Model
     encoder = ResNet1D(
-        num_inputs=input_dim, 
+        num_inputs=6, 
         num_outputs=None, 
         block_type=BasicBlock1D, 
         group_sizes=[2, 2, 2, 2],
         output_block=None
     )
     
+    # [Modified] Residual 模式输入通道翻倍
+    unet_in_channels = target_dim * 2 if mode == 'residual' else target_dim
+    
     unet = DiffUNet1D(
-        in_channels=target_dim, 
+        in_channels=unet_in_channels, 
         out_channels=target_dim, 
         cond_channels=512, 
         base_channels=64,
         channel_mults=(1, 2, 4, 8)
     )
     
-    system = DiffusionSystem(encoder, unet, mode=config.get('mode', 'end2end')).to(device)
+    system = DiffusionSystem(encoder, unet, mode=mode).to(device)
     
     # Fix: Update prior_head output dimension for residual mode
     if config.get('mode') == 'residual' and system.prior_head.out_channels != target_dim:

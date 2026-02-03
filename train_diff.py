@@ -93,27 +93,27 @@ def main(config, args):
     target_dim = train_dataset.target_dim 
     input_dim = train_dataset.feature_dim
     
-    # 2. Models
-    # Encoder: ResNet1D (output features)
+    # 3. Model
     encoder = ResNet1D(
-        num_inputs=input_dim, 
-        num_outputs=None, # Feature extraction mode
+        num_inputs=6, 
+        num_outputs=None, # Feature extractor mode
         block_type=BasicBlock1D, 
         group_sizes=[2, 2, 2, 2],
         output_block=None
     )
     
-    # UNet
+    # [Modified] 如果是 residual 模式，UNet 输入通道数翻倍 (noisy_x + v_prior)
+    unet_in_channels = target_dim * 2 if config['mode'] == 'residual' else target_dim
+    
     unet = DiffUNet1D(
-        in_channels=target_dim, 
+        in_channels=unet_in_channels, 
         out_channels=target_dim, 
         cond_channels=512, 
         base_channels=64,
         channel_mults=(1, 2, 4, 8)
     )
     
-    # System
-    system = DiffusionSystem(encoder, unet, mode=config.get('mode', 'end2end')).to(device)
+    system = DiffusionSystem(encoder, unet, mode=config['mode']).to(device)
     
     # Update prior_head if residual mode and dimensions don't match
     if config.get('mode') == 'residual' and system.prior_head.out_channels != target_dim:

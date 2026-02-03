@@ -100,7 +100,15 @@ class DiffusionSystem(nn.Module):
         noisy_x = self.scheduler.add_noise(target_x0, noise, timesteps)
         
         # 5. Predict Noise (Reverse Process)
-        model_pred = self.unet(noisy_x, timesteps, cond_feat)
+        # [Modified] 如果是 residual 模式，将 v_prior 拼接到输入中
+        if self.mode == "residual":
+            # v_prior: (B, C, L)
+            # noisy_x: (B, C, L)
+            unet_input = torch.cat([noisy_x, v_prior], dim=1)
+        else:
+            unet_input = noisy_x
+            
+        model_pred = self.unet(unet_input, timesteps, cond_feat)
         
         # 6. Compute Loss
         if self.scheduler.config.prediction_type == "epsilon":
@@ -151,7 +159,13 @@ class DiffusionSystem(nn.Module):
             # timesteps tensor 需要扩展 batch 维度
             t_batch = torch.full((batch_size,), t, device=imu.device, dtype=torch.long)
             
-            model_output = self.unet(xt, t_batch, cond_feat)
+            # [Modified] Residual 模式拼接 v_prior
+            if self.mode == "residual":
+                unet_input = torch.cat([xt, v_prior], dim=1)
+            else:
+                unet_input = xt
+            
+            model_output = self.unet(unet_input, t_batch, cond_feat)
             
             # Step
             # diffusers step return: (prev_sample, pred_original_sample, ...)
