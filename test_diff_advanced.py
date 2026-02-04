@@ -357,6 +357,18 @@ def evaluate_autoregressive(args, config):
             
             min_len = min(imu.shape[0], gt_vel.shape[0], gt_pos.shape[0])
             imu, gt_vel, gt_pos = imu[:min_len], gt_vel[:min_len], gt_pos[:min_len]
+
+            # 自动清洗 GT 速度异常点 (防止 Tango 视觉跳变干扰评估)
+            # 人类步行速度上限约为 3m/s，微分异常可能导致 20m/s+ 的假值
+            v_norm = np.linalg.norm(gt_vel, axis=1)
+            bad_mask = v_norm > 5.0 # 设为 5m/s 以防万一 (极速奔跑)
+            if np.any(bad_mask):
+                valid_indices = np.where(~bad_mask)[0]
+                if len(valid_indices) > 0:
+                    # 简单插值处理
+                    for i in np.where(bad_mask)[0]:
+                        nearest_valid = valid_indices[np.abs(valid_indices - i).argmin()]
+                        gt_vel[i] = gt_vel[nearest_valid]
             
             window_size = config.get('window_size', 200)
             
