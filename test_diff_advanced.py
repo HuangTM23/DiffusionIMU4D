@@ -331,6 +331,16 @@ def evaluate_autoregressive(args, config):
         with open(list_path, 'r') as f:
             seq_names = [line.strip() for line in f if line.strip() and line[0] != '#']
         
+        # 排除异常序列 (如 009, 011)
+        exclude_patterns = ['a009', 'a011']
+        filtered_seqs = []
+        for sn in seq_names:
+            if any(p in sn for p in exclude_patterns):
+                print(f"  [Skip] Excluding anomalous sequence: {sn}")
+                continue
+            filtered_seqs.append(sn)
+        seq_names = filtered_seqs
+        
         if args.max_seqs > 0:
             seq_names = seq_names[:args.max_seqs]
             
