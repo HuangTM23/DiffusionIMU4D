@@ -16,3 +16,6 @@ wandb/
 # Temporary files
 .DS_Store
 *.swp
+
+.gemini/
+gha-creds-*.json

@@ -182,6 +182,109 @@ def reconstruct_autoregressive(system, imu_seq, window_size, stride, device, num
     return full_pred
 
 
+def reconstruct_weighted(system, imu_seq, window_size, stride, device, num_steps, mode="end2end"):
+    """
+    使用线性加权平均 (Weighted Blending) 策略重建轨迹
+    这是一种比硬切 (Hard Cut) 更稳健的非自回归策略，用于诊断拼接问题。
+    """
+    L = imu_seq.shape[0]
+    target_dim = system.unet.out_conv[-1].out_channels
+    starts = np.arange(0, L - window_size + 1, stride)
+    if starts[-1] + window_size < L:
+        starts = np.concatenate([starts, [L - window_size]])
+    
+    full_pred = np.zeros((L, target_dim))
+    weights = np.zeros((L, 1))
+    
+    # 构造窗口权重 (两头小中间大，平滑过渡)
+    # 也可以简单使用线性权重
+    window_weight = np.ones(window_size)
+    ramp_len = min(stride, window_size // 4)
+    if ramp_len > 0:
+        ramp = np.linspace(0, 1, ramp_len)
+        window_weight[:ramp_len] = ramp
+        window_weight[-ramp_len:] = ramp[::-1]
+    window_weight = window_weight[:, np.newaxis]
+
+    system.eval()
+    system.scheduler.set_timesteps(num_steps)
+    
+    for start_idx in tqdm(starts, desc="Weighted Blending", leave=False):
+        end_idx = start_idx + window_size
+        imu_window = imu_seq[start_idx:end_idx]
+        imu_tensor = torch.from_numpy(imu_window).float().unsqueeze(0).permute(0, 2, 1).to(device)
+        
+        with torch.no_grad():
+            cond_feat = system.encoder(imu_tensor)
+            v_prior = None
+            if mode == 'residual':
+                v_prior_feat = system.prior_head(cond_feat)
+                v_prior = torch.nn.functional.interpolate(v_prior_feat, size=window_size, mode='linear', align_corners=False)
+            
+            xt = torch.randn(1, target_dim, window_size, device=device)
+            for t in system.scheduler.timesteps:
+                t_batch = torch.full((1,), t, device=device, dtype=torch.long)
+                model_output = system.unet(xt, t_batch, cond_feat)
+                xt = system.scheduler.step(model_output, t, xt).prev_sample
+            
+            pred_curr = xt
+            if mode == 'residual':
+                pred_curr = pred_curr + v_prior
+            
+            pred_curr_np = pred_curr.squeeze(0).detach().permute(1, 0).cpu().numpy()
+            
+            # 累加预测值和权重
+            full_pred[start_idx:end_idx] += pred_curr_np * window_weight
+            weights[start_idx:end_idx] += window_weight
+
+    # 归一化
+    full_pred /= (weights + 1e-8)
+    return full_pred
+
+
+def plot_detailed_diagnosis(gt_vel, pred_vel, gt_pos, pred_pos, seq_name, out_dir):
+    """
+    生成深度诊断图：轨迹对比 + Vx/Vy 分量对比
+    """
+    fig = plt.figure(figsize=(15, 10))
+    
+    # 1. 轨迹图
+    ax1 = plt.subplot(2, 2, 1)
+    ax1.plot(gt_pos[:, 0], gt_pos[:, 1], 'k-', label='GT')
+    ax1.plot(pred_pos[:, 0], pred_pos[:, 1], 'r--', label='Pred')
+    ax1.set_title(f"Trajectory: {seq_name}")
+    ax1.legend()
+    ax1.axis('equal')
+    
+    # 2. Vx 速度分量
+    ax2 = plt.subplot(2, 2, 3)
+    ax2.plot(gt_vel[:, 0], 'k-', alpha=0.5, label='GT Vx')
+    ax2.plot(pred_vel[:, 0], 'r-', alpha=0.8, label='Pred Vx')
+    ax2.set_title("Velocity X-component")
+    ax2.set_xlabel("Time Step")
+    ax2.legend()
+    
+    # 3. Vy 速度分量
+    ax3 = plt.subplot(2, 2, 4)
+    ax3.plot(gt_vel[:, 1], 'k-', alpha=0.5, label='GT Vy')
+    ax3.plot(pred_vel[:, 1], 'g-', alpha=0.8, label='Pred Vy')
+    ax3.set_title("Velocity Y-component")
+    ax3.set_xlabel("Time Step")
+    ax3.legend()
+
+    # 4. 速度误差分布
+    ax4 = plt.subplot(2, 2, 2)
+    error = np.linalg.norm(pred_vel - gt_vel, axis=1)
+    ax4.hist(error, bins=50, color='gray', alpha=0.7)
+    ax4.axvline(np.mean(error), color='r', linestyle='--', label=f'Mean: {np.mean(error):.4f}')
+    ax4.set_title("Velocity Error Distribution")
+    ax4.legend()
+
+    plt.tight_layout()
+    plt.savefig(os.path.join(out_dir, f"diag_{seq_name}.png"), dpi=150)
+    plt.close()
+
+
 def evaluate_autoregressive(args, config):
     device = torch.device('cuda:0' if torch.cuda.is_available() and not args.cpu else 'cpu')
     print(f"Using device: {device}")
@@ -192,12 +295,9 @@ def evaluate_autoregressive(args, config):
     mode = config.get('mode', 'end2end')
     
     print(f"Mode: {mode}, Target dim: {target_dim}")
-    print(f"Method: Autoregressive In-painting")
+    print(f"Method: {args.method}")
     
     encoder = ResNet1D(num_inputs=input_dim, num_outputs=None, block_type=BasicBlock1D, group_sizes=[2, 2, 2, 2], output_block=None)
-    
-    # 注意：这里我们假设测试的是【旧模型】（未修改通道数的）
-    # 如果您想测试新模型，请手动修改这里为 target_dim * 2
     unet = DiffUNet1D(in_channels=target_dim, out_channels=target_dim, cond_channels=512, base_channels=64, channel_mults=(1, 2, 4, 8))
     
     system = DiffusionSystem(encoder, unet, mode=mode).to(device)
@@ -208,17 +308,15 @@ def evaluate_autoregressive(args, config):
     if args.model_path and os.path.exists(args.model_path):
         print(f"Loading model from {args.model_path}")
         system.load_state_dict(torch.load(args.model_path, map_location=device))
-    else:
-        raise ValueError(f"Model not found: {args.model_path}")
+    elif args.model_path:
+        print(f"Warning: Model not found at {args.model_path}, using random weights for dry run.")
     
     system.set_scheduler(args.scheduler)
     system.eval()
     
-    # 2. 准备输出
-    results_dir = args.out_dir or 'experiments/results_autoregressive'
+    results_dir = args.out_dir
     os.makedirs(results_dir, exist_ok=True)
     
-    # 3. 数据集
     test_lists = {
         "seen": config.get('test_seen_list', 'data/RoNIN/lists/list_test_seen.txt'),
         "unseen": config.get('test_unseen_list', 'data/RoNIN/lists/list_test_unseen.txt')
@@ -247,49 +345,36 @@ def evaluate_autoregressive(args, config):
             gt_vel = seq_data.get_target()
             gt_pos = seq_data.gt_pos[:, :2]
             
-            # 对齐
             min_len = min(imu.shape[0], gt_vel.shape[0], gt_pos.shape[0])
-            imu = imu[:min_len]
-            gt_vel = gt_vel[:min_len]
-            gt_pos = gt_pos[:min_len]
+            imu, gt_vel, gt_pos = imu[:min_len], gt_vel[:min_len], gt_pos[:min_len]
             
-            # 4. 自回归推理
             window_size = config.get('window_size', 200)
-            stride = args.stride # 建议 stride = window_size // 2
             
-            pred_vel = reconstruct_autoregressive(
-                system, imu, window_size, stride, device, args.steps, mode
-            )
+            # 推理策略选择
+            if args.method == 'autoregressive':
+                pred_vel = reconstruct_autoregressive(system, imu, window_size, args.stride, device, args.steps, mode)
+            else:
+                pred_vel = reconstruct_weighted(system, imu, window_size, args.stride, device, args.steps, mode)
             
-            # 再次对齐 (防止推理长度微小差异)
             min_len_final = min(pred_vel.shape[0], gt_pos.shape[0])
-            pred_vel = pred_vel[:min_len_final]
-            gt_pos = gt_pos[:min_len_final]
-            gt_vel = gt_vel[:min_len_final]
+            pred_vel, gt_pos, gt_vel = pred_vel[:min_len_final], gt_pos[:min_len_final], gt_vel[:min_len_final]
             
-            # 5. 评估
             pred_pos = integrate_trajectory(pred_vel, initial_pos=gt_pos[0], dt=0.005)
-            pred_per_min = 200 * 60
-            ate, rte = compute_ate_rte(pred_pos[:, :2], gt_pos, pred_per_min)
-            
-            vel_error = np.linalg.norm(pred_vel - gt_vel, axis=1)
+            ate, rte = compute_ate_rte(pred_pos[:, :2], gt_pos, 200 * 60)
             
             all_metrics.append({
-                "split": split_name,
-                "seq": seq_name,
-                "ate": ate,
-                "rte": rte,
-                "mean_vel_error": np.mean(vel_error)
+                "split": split_name, "seq": seq_name, "ate": ate, "rte": rte, "mean_vel_error": np.mean(np.linalg.norm(pred_vel - gt_vel, axis=1))
             })
             
             if args.plot:
-                plot_traj(gt_pos, pred_pos, seq_name, ate, results_dir)
+                plot_detailed_diagnosis(gt_vel, pred_vel, gt_pos, pred_pos, seq_name, results_dir)
 
     df = pd.DataFrame(all_metrics)
-    df.to_csv(os.path.join(results_dir, "metrics_autoregressive.csv"), index=False)
+    df.to_csv(os.path.join(results_dir, "metrics.csv"), index=False)
     print("\nSummary:")
     print(df.groupby('split')[['ate', 'rte', 'mean_vel_error']].mean())
     return df
+
 
 def plot_traj(gt, pred, name, ate, out_dir):
     plt.figure(figsize=(6, 6))
@@ -305,10 +390,12 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--config', type=str, required=True)
     parser.add_argument('--model_path', type=str, required=True)
-    parser.add_argument('--out_dir', type=str, default='experiments/results_autoregressive')
+    parser.add_argument('--out_dir', type=str, default='experiments/results_diagnostic')
+    parser.add_argument('--method', type=str, choices=['autoregressive', 'weighted'], default='autoregressive',
+                        help='Stitching method: autoregressive (in-painting) or weighted (linear blending)')
     parser.add_argument('--scheduler', type=str, default='ddim')
     parser.add_argument('--steps', type=int, default=50)
-    parser.add_argument('--stride', type=int, default=100) # 建议设为 100 (即 overlap 100)
+    parser.add_argument('--stride', type=int, default=100)
     parser.add_argument('--cpu', action='store_true')
     parser.add_argument('--plot', action='store_true')
     parser.add_argument('--max_seqs', type=int, default=-1)
