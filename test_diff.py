@@ -19,6 +19,11 @@ from utils.metric import compute_ate_rte
 def evaluate(args, config):
     device = torch.device('cuda:0' if torch.cuda.is_available() and not args.cpu else 'cpu')
     
+    # 1. Configs
+    target_dim = config.get('target_dim', 2)
+    mode = config.get('mode', 'end2end')
+    print(f"Mode: {mode}, Target Dim: {target_dim}")
+    
     # 2. Model
     encoder = ResNet1D(
         num_inputs=6, 
@@ -106,41 +111,69 @@ def evaluate(args, config):
                 batch_size=args.batch_size
             )
             
+            min_len_final = min(pred_vel.shape[0], gt_pos.shape[0], gt_vel.shape[0])
+            pred_vel, gt_pos, gt_vel = pred_vel[:min_len_final], gt_pos[:min_len_final], gt_vel[:min_len_final]
+
+            # 自动清洗 GT 速度异常点 (防止 Tango 视觉跳变干扰评估)
+            v_norm = np.linalg.norm(gt_vel, axis=1)
+            bad_mask = v_norm > 5.0
+            if np.any(bad_mask):
+                valid_indices = np.where(~bad_mask)[0]
+                if len(valid_indices) > 0:
+                    for i in np.where(bad_mask)[0]:
+                        nearest_valid = valid_indices[np.abs(valid_indices - i).argmin()]
+                        gt_vel[i] = gt_vel[nearest_valid]
+
             # 4. Reconstruct Trajectory
-            # Initial position from GT
-            pred_pos = integrate_trajectory(pred_vel, initial_pos=gt_pos[0], dt=0.005) # 200Hz -> dt=0.005
+            pred_pos = integrate_trajectory(pred_vel, initial_pos=gt_pos[0], dt=0.005)
             
             # 5. Metrics
-            pred_per_min = 200 * 60
-            ate, rte = compute_ate_rte(pred_pos[:, :2], gt_pos, pred_per_min)
+            ate, rte = compute_ate_rte(pred_pos[:, :2], gt_pos, 200 * 60)
             
             all_metrics.append({
-                "split": split_name,
-                "seq": seq_name,
-                "ate": ate,
-                "rte": rte
+                "split": split_name, "seq": seq_name, "ate": ate, "rte": rte,
+                "mean_vel_error": np.mean(np.linalg.norm(pred_vel - gt_vel, axis=1))
             })
             
             # 6. Plotting
             if args.plot:
-                plot_path = os.path.join(results_dir, f"{split_name}_{seq_name}.png")
-                err_path = os.path.join(results_dir, f"{split_name}_{seq_name}_error.png")
-                save_trajectory_plot(gt_pos, pred_pos, seq_name, ate, rte, plot_path)
-                save_error_plot(gt_pos, pred_pos, seq_name, err_path)
+                plot_detailed_comparison(gt_pos, pred_pos, gt_vel, pred_vel, seq_name, ate, results_dir)
                 
     # 7. Save Summary
     df = pd.DataFrame(all_metrics)
     summary_path = os.path.join(results_dir, "metrics.csv")
     df.to_csv(summary_path, index=False)
     
-    # 8. Global Distribution Plot
-    if args.plot and not df.empty:
-        dist_path = os.path.join(results_dir, "error_distribution.png")
-        save_distribution_plot(df, dist_path)
-    
     print("\nEvaluation Summary:")
-    print(df.groupby('split')[['ate', 'rte']].mean())
+    print(df.groupby('split')[['ate', 'rte', 'mean_vel_error']].mean())
     print(f"Results saved to {results_dir}")
+
+def plot_detailed_comparison(gt_pos, pred_pos, gt_vel, pred_vel, name, ate, out_dir):
+    fig, axes = plt.subplots(1, 2, figsize=(16, 7))
+    
+    # Left: Trajectory
+    axes[0].plot(gt_pos[:, 0], gt_pos[:, 1], 'k-', label='GT', alpha=0.6)
+    axes[0].plot(pred_pos[:, 0], pred_pos[:, 1], 'r--', label='Pred')
+    axes[0].set_title(f"Trajectory: {name} (ATE: {ate:.2f}m)")
+    axes[0].axis('equal')
+    axes[0].legend()
+    axes[0].grid(True)
+    
+    # Right: Velocity Components
+    ax_v = axes[1]
+    ax_v.plot(gt_vel[:, 0], 'k-', label='GT Vx', alpha=0.4)
+    ax_v.plot(pred_vel[:, 0], 'r-', label='Pred Vx', alpha=0.7)
+    ax_v.plot(gt_vel[:, 1], 'k--', label='GT Vy', alpha=0.4)
+    ax_v.plot(pred_vel[:, 1], 'g--', label='Pred Vy', alpha=0.7)
+    ax_v.set_title("Velocity Components (X & Y)")
+    ax_v.set_xlabel("Time Step")
+    ax_v.set_ylabel("m/s")
+    ax_v.legend(loc='upper right')
+    ax_v.grid(True)
+    
+    plt.tight_layout()
+    plt.savefig(os.path.join(out_dir, f"{name}_comparison.png"), dpi=150)
+    plt.close()
 
 def save_trajectory_plot(gt_pos, pred_pos, seq_name, ate, rte, path):
     plt.figure(figsize=(8, 8))
