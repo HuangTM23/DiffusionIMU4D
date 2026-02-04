@@ -1,15 +1,14 @@
-# Diffusion Variant A (Residual/Refinement) Config
-data_dir: "data/RoNIN/extracted"
-train_list: "data/RoNIN/lists/list_train.txt"
-val_list: "data/RoNIN/lists/list_val.txt"
+data_dir: "data/RoNIN/extracted/"
+test_seen_list: "data/RoNIN/lists/list_test_seen.txt"
+test_unseen_list: "data/RoNIN/lists/list_test_unseen.txt"
 
 window_size: 200
 stride: 100
 batch_size: 128
 lr: 0.0001
-epochs: 100
+epochs: 200
 
 mode: "residual"
 log_interval: 10
-save_interval: 5
-num_inference_steps: 50
+save_interval: 10
+target_dim: 2
