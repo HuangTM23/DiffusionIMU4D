@@ -97,12 +97,26 @@ def evaluate(args, config):
             gt_pos = seq_data.gt_pos[:, :2] # (L, 2)
             
             # 3. Inference
-            # Define a simple wrapper for system.sample
             def model_func(x):
-                # x is already (B, 6, W) from reconstruct_trajectory
-                return system.sample(x, num_inference_steps=args.steps)
+                cond_feat = system.encoder(x)
                 
-            pred_vel = reconstruct_trajectory(
+                # 如果是 residual 模式，先提取 prior
+                v_prior = None
+                if mode == 'residual':
+                    v_prior_feat = system.prior_head(cond_feat)
+                    v_prior = torch.nn.functional.interpolate(
+                        v_prior_feat, size=x.shape[-1], mode='linear', align_corners=False
+                    )
+                
+                # Diffusion Sampling
+                pred = system.sample(x, num_inference_steps=args.steps, cond_feat=cond_feat)
+                
+                if mode == 'residual':
+                    return pred, v_prior
+                return pred
+                
+            # 执行推理
+            res = reconstruct_trajectory(
                 model_func, 
                 imu, 
                 window_size=config.get('window_size', 200),
@@ -111,10 +125,17 @@ def evaluate(args, config):
                 batch_size=args.batch_size
             )
             
+            if isinstance(res, tuple):
+                pred_vel, prior_vel = res
+            else:
+                pred_vel, prior_vel = res, None
+            
             min_len_final = min(pred_vel.shape[0], gt_pos.shape[0], gt_vel.shape[0])
             pred_vel, gt_pos, gt_vel = pred_vel[:min_len_final], gt_pos[:min_len_final], gt_vel[:min_len_final]
+            if prior_vel is not None:
+                prior_vel = prior_vel[:min_len_final]
 
-            # 自动清洗 GT 速度异常点 (防止 Tango 视觉跳变干扰评估)
+            # 自动清洗 GT 速度异常点
             v_norm = np.linalg.norm(gt_vel, axis=1)
             bad_mask = v_norm > 5.0
             if np.any(bad_mask):
@@ -137,8 +158,8 @@ def evaluate(args, config):
             
             # 6. Plotting
             if args.plot:
-                plot_detailed_comparison(gt_pos, pred_pos, gt_vel, pred_vel, seq_name, ate, results_dir)
-                
+                plot_detailed_comparison(gt_pos, pred_pos, gt_vel, pred_vel, seq_name, ate, results_dir, prior_vel)
+
     # 7. Save Summary
     df = pd.DataFrame(all_metrics)
     summary_path = os.path.join(results_dir, "metrics.csv")
@@ -148,27 +169,36 @@ def evaluate(args, config):
     print(df.groupby('split')[['ate', 'rte', 'mean_vel_error']].mean())
     print(f"Results saved to {results_dir}")
 
-def plot_detailed_comparison(gt_pos, pred_pos, gt_vel, pred_vel, name, ate, out_dir):
+def plot_detailed_comparison(gt_pos, pred_pos, gt_vel, pred_vel, name, ate, out_dir, prior_vel=None):
     fig, axes = plt.subplots(1, 2, figsize=(16, 7))
     
     # Left: Trajectory
     axes[0].plot(gt_pos[:, 0], gt_pos[:, 1], 'k-', label='GT', alpha=0.6)
     axes[0].plot(pred_pos[:, 0], pred_pos[:, 1], 'r--', label='Pred')
+    if prior_vel is not None:
+        prior_pos = integrate_trajectory(prior_vel, initial_pos=gt_pos[0], dt=0.005)
+        axes[0].plot(prior_pos[:, 0], prior_pos[:, 1], 'b:', label='Prior', alpha=0.5)
     axes[0].set_title(f"Trajectory: {name} (ATE: {ate:.2f}m)")
     axes[0].axis('equal')
     axes[0].legend()
     axes[0].grid(True)
     
-    # Right: Velocity Components
+    # Right: Velocity Components (Vx and Vy)
     ax_v = axes[1]
-    ax_v.plot(gt_vel[:, 0], 'k-', label='GT Vx', alpha=0.4)
-    ax_v.plot(pred_vel[:, 0], 'r-', label='Pred Vx', alpha=0.7)
-    ax_v.plot(gt_vel[:, 1], 'k--', label='GT Vy', alpha=0.4)
-    ax_v.plot(pred_vel[:, 1], 'g--', label='Pred Vy', alpha=0.7)
-    ax_v.set_title("Velocity Components (X & Y)")
+    ax_v.plot(gt_vel[:, 0], 'k-', label='GT Vx', alpha=0.3)
+    ax_v.plot(pred_vel[:, 0], 'r-', label='Pred Vx', alpha=0.8)
+    if prior_vel is not None:
+        ax_v.plot(prior_vel[:, 0], 'r:', label='Prior Vx', alpha=0.4)
+        
+    ax_v.plot(gt_vel[:, 1], 'k--', label='GT Vy', alpha=0.3)
+    ax_v.plot(pred_vel[:, 1], 'g-', label='Pred Vy', alpha=0.8)
+    if prior_vel is not None:
+        ax_v.plot(prior_vel[:, 1], 'g:', label='Prior Vy', alpha=0.4)
+        
+    ax_v.set_title("Velocity Components")
     ax_v.set_xlabel("Time Step")
     ax_v.set_ylabel("m/s")
-    ax_v.legend(loc='upper right')
+    ax_v.legend(loc='upper right', fontsize='small', ncol=2)
     ax_v.grid(True)
     
     plt.tight_layout()
