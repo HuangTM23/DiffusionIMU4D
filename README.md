@@ -14,7 +14,8 @@
     ```
 *   **推理与评估**:
     ```bash
-    python3 test_diff.py --config configs/diffusion_variant_a.yaml --model_path experiments/checkpoints/diff_residual_epoch_99.pth
+    # 基础评估 (增加 --plot 可开启轨迹与速度对比图)
+    python3 test_diff.py --config configs/diffusion_variant_a.yaml --model_path checkpoints/your_model.pth --plot
     ```
 
 ### 方案 B：端到端条件生成 (End-to-End Conditional)
@@ -25,8 +26,35 @@
     ```
 *   **推理与评估**:
     ```bash
-    python3 test_diff.py --config configs/diffusion_variant_b.yaml --model_path experiments/checkpoints/diff_end2end_epoch_99.pth
+    # 基础评估
+    python3 test_diff.py --config configs/diffusion_variant_b.yaml --model_path checkpoints/your_model.pth --plot
     ```
+
+---
+
+## 🔍 深度诊断与高级推理
+
+对于长轨迹重建中的窗口衔接问题，项目提供了 `test_diff_advanced.py` 进行更细致的分析。
+
+### 1. 拼接方法对比
+可以通过 `--method` 参数选择不同的窗口拼接策略：
+*   **`weighted` (推荐)**: 线性加权平滑拼接，有效降低跳变感和 ATE 误差。
+*   **`autoregressive`**: 基于 In-painting 的自回归采样，强制约束重叠区域。
+
+```bash
+# 运行高级诊断推理
+python3 test_diff_advanced.py \
+  --config configs/diffusion_variant_b.yaml \
+  --model_path checkpoints/your_model.pth \
+  --method weighted \
+  --plot
+```
+
+### 2. 可视化说明
+使用 `--plot` 参数后，结果将保存在 `experiments/` 对应的目录下：
+*   **Trajectory**: 对比 GT、Pred 和 Prior (残差模式) 的全局轨迹。
+*   **Velocity**: 展示 Vx 和 Vy 分量的拟合情况，便于观察系统性零偏 (Bias)。
+*   **Distribution**: 统计速度误差的分布情况。
 
 ---
 
