@@ -98,9 +98,10 @@ def evaluate(args, config):
             
             # 3. Inference
             def model_func(x):
+                # 手动执行 DiffusionSystem.sample 的内部逻辑以提取 v_prior 避免重复计算
+                system.eval()
                 cond_feat = system.encoder(x)
                 
-                # 如果是 residual 模式，先提取 prior
                 v_prior = None
                 if mode == 'residual':
                     v_prior_feat = system.prior_head(cond_feat)
@@ -108,12 +109,25 @@ def evaluate(args, config):
                         v_prior_feat, size=x.shape[-1], mode='linear', align_corners=False
                     )
                 
-                # Diffusion Sampling
-                pred = system.sample(x, num_inference_steps=args.steps, cond_feat=cond_feat)
+                # 采样逻辑 (直接模拟 system.sample 内部，但不重新计算特征)
+                batch_size = x.shape[0]
+                seq_len = x.shape[-1]
+                out_channels = system.unet.out_conv[-1].out_channels
+                xt = torch.randn(batch_size, out_channels, seq_len, device=x.device)
+                
+                system.scheduler.set_timesteps(args.steps)
+                for t in system.scheduler.timesteps:
+                    t_batch = torch.full((batch_size,), t, device=x.device, dtype=torch.long)
+                    if mode == 'residual':
+                        unet_input = torch.cat([xt, v_prior], dim=1)
+                    else:
+                        unet_input = xt
+                    model_output = system.unet(unet_input, t_batch, cond_feat)
+                    xt = system.scheduler.step(model_output, t, xt).prev_sample
                 
                 if mode == 'residual':
-                    return pred, v_prior
-                return pred
+                    return xt + v_prior, v_prior
+                return xt
                 
             # 执行推理
             res = reconstruct_trajectory(
