@@ -185,7 +185,7 @@ def reconstruct_autoregressive(system, imu_seq, window_size, stride, device, num
 def reconstruct_weighted(system, imu_seq, window_size, stride, device, num_steps, mode="end2end"):
     """
     使用线性加权平均 (Weighted Blending) 策略重建轨迹
-    这是一种比硬切 (Hard Cut) 更稳健的非自回归策略，用于诊断拼接问题。
+    返回: (final_prediction, prior_prediction)
     """
     L = imu_seq.shape[0]
     target_dim = system.unet.out_conv[-1].out_channels
@@ -194,10 +194,10 @@ def reconstruct_weighted(system, imu_seq, window_size, stride, device, num_steps
         starts = np.concatenate([starts, [L - window_size]])
     
     full_pred = np.zeros((L, target_dim))
+    full_prior = np.zeros((L, target_dim)) # 新增：存储 Prior
     weights = np.zeros((L, 1))
     
-    # 构造窗口权重 (两头小中间大，平滑过渡)
-    # 也可以简单使用线性权重
+    # 构造窗口权重
     window_weight = np.ones(window_size)
     ramp_len = min(stride, window_size // 4)
     if ramp_len > 0:
@@ -227,24 +227,33 @@ def reconstruct_weighted(system, imu_seq, window_size, stride, device, num_steps
                 model_output = system.unet(xt, t_batch, cond_feat)
                 xt = system.scheduler.step(model_output, t, xt).prev_sample
             
+            # 处理输出
             pred_curr = xt
+            prior_curr_np = np.zeros((window_size, target_dim))
+            
             if mode == 'residual':
+                # 保存 prior (注意 v_prior 是 tensor)
+                prior_curr_np = v_prior.squeeze(0).detach().permute(1, 0).cpu().numpy()
+                # 最终结果 = residual + prior
                 pred_curr = pred_curr + v_prior
             
             pred_curr_np = pred_curr.squeeze(0).detach().permute(1, 0).cpu().numpy()
             
-            # 累加预测值和权重
+            # 累加
             full_pred[start_idx:end_idx] += pred_curr_np * window_weight
+            full_prior[start_idx:end_idx] += prior_curr_np * window_weight
             weights[start_idx:end_idx] += window_weight
 
     # 归一化
     full_pred /= (weights + 1e-8)
-    return full_pred
+    full_prior /= (weights + 1e-8)
+    
+    return full_pred, full_prior
 
 
-def plot_detailed_diagnosis(gt_vel, pred_vel, gt_pos, pred_pos, seq_name, out_dir):
+def plot_detailed_diagnosis(gt_vel, pred_vel, gt_pos, pred_pos, seq_name, out_dir, prior_vel=None):
     """
-    生成深度诊断图：轨迹对比 + Vx/Vy 分量对比
+    生成深度诊断图：轨迹对比 + Vx/Vy 分量对比 (包含 Prior)
     """
     fig = plt.figure(figsize=(15, 10))
     
@@ -252,6 +261,10 @@ def plot_detailed_diagnosis(gt_vel, pred_vel, gt_pos, pred_pos, seq_name, out_di
     ax1 = plt.subplot(2, 2, 1)
     ax1.plot(gt_pos[:, 0], gt_pos[:, 1], 'k-', label='GT')
     ax1.plot(pred_pos[:, 0], pred_pos[:, 1], 'r--', label='Pred')
+    if prior_vel is not None and np.any(prior_vel):
+        # 积分 Prior 轨迹用于对比
+        prior_pos = integrate_trajectory(prior_vel, initial_pos=gt_pos[0], dt=0.005)
+        ax1.plot(prior_pos[:, 0], prior_pos[:, 1], 'b:', alpha=0.6, label='Prior')
     ax1.set_title(f"Trajectory: {seq_name}")
     ax1.legend()
     ax1.axis('equal')
@@ -260,6 +273,8 @@ def plot_detailed_diagnosis(gt_vel, pred_vel, gt_pos, pred_pos, seq_name, out_di
     ax2 = plt.subplot(2, 2, 3)
     ax2.plot(gt_vel[:, 0], 'k-', alpha=0.5, label='GT Vx')
     ax2.plot(pred_vel[:, 0], 'r-', alpha=0.8, label='Pred Vx')
+    if prior_vel is not None and np.any(prior_vel):
+        ax2.plot(prior_vel[:, 0], 'b--', alpha=0.5, label='Prior Vx')
     ax2.set_title("Velocity X-component")
     ax2.set_xlabel("Time Step")
     ax2.legend()
@@ -268,6 +283,8 @@ def plot_detailed_diagnosis(gt_vel, pred_vel, gt_pos, pred_pos, seq_name, out_di
     ax3 = plt.subplot(2, 2, 4)
     ax3.plot(gt_vel[:, 1], 'k-', alpha=0.5, label='GT Vy')
     ax3.plot(pred_vel[:, 1], 'g-', alpha=0.8, label='Pred Vy')
+    if prior_vel is not None and np.any(prior_vel):
+        ax3.plot(prior_vel[:, 1], 'b--', alpha=0.5, label='Prior Vy')
     ax3.set_title("Velocity Y-component")
     ax3.set_xlabel("Time Step")
     ax3.legend()
@@ -348,14 +365,12 @@ def evaluate_autoregressive(args, config):
             min_len = min(imu.shape[0], gt_vel.shape[0], gt_pos.shape[0])
             imu, gt_vel, gt_pos = imu[:min_len], gt_vel[:min_len], gt_pos[:min_len]
 
-            # 自动清洗 GT 速度异常点 (防止 Tango 视觉跳变干扰评估)
-            # 人类步行速度上限约为 3m/s，微分异常可能导致 20m/s+ 的假值
+            # 自动清洗 GT 速度异常点
             v_norm = np.linalg.norm(gt_vel, axis=1)
-            bad_mask = v_norm > 5.0 # 设为 5m/s 以防万一 (极速奔跑)
+            bad_mask = v_norm > 5.0 
             if np.any(bad_mask):
                 valid_indices = np.where(~bad_mask)[0]
                 if len(valid_indices) > 0:
-                    # 简单插值处理
                     for i in np.where(bad_mask)[0]:
                         nearest_valid = valid_indices[np.abs(valid_indices - i).argmin()]
                         gt_vel[i] = gt_vel[nearest_valid]
@@ -363,13 +378,16 @@ def evaluate_autoregressive(args, config):
             window_size = config.get('window_size', 200)
             
             # 推理策略选择
+            prior_vel = None # 默认无 prior
             if args.method == 'autoregressive':
                 pred_vel = reconstruct_autoregressive(system, imu, window_size, args.stride, device, args.steps, mode)
             else:
-                pred_vel = reconstruct_weighted(system, imu, window_size, args.stride, device, args.steps, mode)
+                pred_vel, prior_vel = reconstruct_weighted(system, imu, window_size, args.stride, device, args.steps, mode)
             
             min_len_final = min(pred_vel.shape[0], gt_pos.shape[0])
             pred_vel, gt_pos, gt_vel = pred_vel[:min_len_final], gt_pos[:min_len_final], gt_vel[:min_len_final]
+            if prior_vel is not None:
+                prior_vel = prior_vel[:min_len_final]
             
             pred_pos = integrate_trajectory(pred_vel, initial_pos=gt_pos[0], dt=0.005)
             ate, rte = compute_ate_rte(pred_pos[:, :2], gt_pos, 200 * 60)
@@ -379,41 +397,10 @@ def evaluate_autoregressive(args, config):
             })
             
             if args.plot:
-                plot_detailed_diagnosis(gt_vel, pred_vel, gt_pos, pred_pos, seq_name, results_dir)
+                plot_detailed_diagnosis(gt_vel, pred_vel, gt_pos, pred_pos, seq_name, results_dir, prior_vel)
 
     df = pd.DataFrame(all_metrics)
     df.to_csv(os.path.join(results_dir, "metrics.csv"), index=False)
     print("\nSummary:")
     print(df.groupby('split')[['ate', 'rte', 'mean_vel_error']].mean())
     return df
-
-
-def plot_traj(gt, pred, name, ate, out_dir):
-    plt.figure(figsize=(6, 6))
-    plt.plot(gt[:, 0], gt[:, 1], 'k-', label='GT')
-    plt.plot(pred[:, 0], pred[:, 1], 'r-', label=f'AutoReg (ATE={ate:.2f})')
-    plt.legend()
-    plt.title(name)
-    plt.axis('equal')
-    plt.savefig(os.path.join(out_dir, f"{name}.png"))
-    plt.close()
-
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--config', type=str, required=True)
-    parser.add_argument('--model_path', type=str, required=True)
-    parser.add_argument('--out_dir', type=str, default='experiments/results_diagnostic')
-    parser.add_argument('--method', type=str, choices=['autoregressive', 'weighted'], default='autoregressive',
-                        help='Stitching method: autoregressive (in-painting) or weighted (linear blending)')
-    parser.add_argument('--scheduler', type=str, default='ddim')
-    parser.add_argument('--steps', type=int, default=50)
-    parser.add_argument('--stride', type=int, default=100)
-    parser.add_argument('--cpu', action='store_true')
-    parser.add_argument('--plot', action='store_true')
-    parser.add_argument('--max_seqs', type=int, default=-1)
-    
-    args = parser.parse_args()
-    with open(args.config, 'r') as f:
-        config = yaml.safe_load(f)
-        
-    evaluate_autoregressive(args, config)
