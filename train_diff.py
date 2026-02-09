@@ -125,6 +125,11 @@ def main(config, args):
     # 3. Training Loop
     import time
     print(f"Start Training... Total Epochs: {config['epochs']}")
+    best_val_loss = float('inf')
+    best_epoch = -1
+    os.makedirs('experiments/best_models', exist_ok=True)
+    os.makedirs('experiments/checkpoints', exist_ok=True)
+
     for epoch in range(config['epochs']):
         epoch_start_time = time.time()
         system.train()
@@ -168,17 +173,25 @@ def main(config, args):
         
         # Validation & Sampling
         if (epoch + 1) % config['save_interval'] == 0 or args.dry_run:
-            validate_and_sample(system, val_loader, device, epoch, config, args)
+            avg_val_loss = validate_and_sample(system, val_loader, device, epoch, config, args)
             
             # Save Checkpoint
-            os.makedirs('experiments/checkpoints', exist_ok=True)
             torch.save(system.state_dict(), f'experiments/checkpoints/diff_{config["mode"]}_epoch_{epoch}.pth')
+
+            # Check if this is the best model
+            if avg_val_loss < best_val_loss:
+                best_val_loss = avg_val_loss
+                best_epoch = epoch
+                best_model_path = f'experiments/best_models/best_diff_{config["mode"]}.pth'
+                torch.save(system.state_dict(), best_model_path)
+                print(f"  [Best Model] New best Val Loss: {best_val_loss:.6f} at epoch {epoch}. Saved to {best_model_path}")
+                log_metrics({"best_val_loss": best_val_loss, "best_epoch": best_epoch})
 
 def validate_and_sample(system, val_loader, device, epoch, config, args):
     system.eval()
     val_loss = 0
     
-    # 1. Compute Val Loss (Noise Prediction MSE)
+    # 1. Compute Val Loss
     with torch.no_grad():
         for i, (imu, vel, _, _) in enumerate(val_loader):
             if args.dry_run and i > 1: break
@@ -228,6 +241,7 @@ def validate_and_sample(system, val_loader, device, epoch, config, args):
         wandb.log({"sample_plot": wandb.Image(fig)}, step=epoch)
     
     plt.close(fig)
+    return avg_val_loss
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
