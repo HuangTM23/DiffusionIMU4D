@@ -128,40 +128,29 @@ class DiffusionSystem(nn.Module):
         model_pred = self.unet(unet_input, timesteps, cond_feat)
         
         # 6. Base Loss (MSE)
-        # 注意：为了应用积分损失，强烈建议使用 prediction_type="sample" (预测 x0)
-        # 如果是 epsilon，我们需要先推导出 x0_pred
         if self.scheduler.config.prediction_type == "epsilon":
             target = noise
-            mse_loss = torch.nn.functional.mse_loss(model_pred, target)
+            total_loss = torch.nn.functional.mse_loss(model_pred, target)
             
-            # 从 epsilon 推导 x0 (近似，用于计算辅助损失)
-            # x_0 = (x_t - sqrt(1-alpha_bar) * eps) / sqrt(alpha_bar)
-            # 需要从 scheduler 获取 alpha_prod_t
-            # 这里为了简化和稳定，如果配置是 epsilon，我们暂时只计算 MSE，
-            # 或者建议用户切换到 'sample' 模式。
-            # 为了强制生效，我们假设用户会配置为 sample。
+            # 如果是 epsilon 模式，由于推导 x0 比较复杂且容易数值不稳定，
+            # 暂时只对 Residual 模式下的 Prior 部分加积分约束
+            if self.mode == "residual":
+                prior_mse = torch.nn.functional.mse_loss(v_prior, gt_vel)
+                prior_integral = self._compute_integral_loss(v_prior, gt_vel)
+                total_loss = total_loss + prior_mse + 0.5 * prior_integral
             
         elif self.scheduler.config.prediction_type == "sample":
             target = target_x0
             mse_loss = torch.nn.functional.mse_loss(model_pred, target)
             
-            # --- Integral Loss (关键修改) ---
+            # --- Integral Loss ---
             if self.mode == "residual":
-                # 监督 Prior 的积分特性 (确保底座不漂移)
                 prior_mse = torch.nn.functional.mse_loss(v_prior, gt_vel)
                 prior_integral = self._compute_integral_loss(v_prior, gt_vel)
-                
-                # 监督最终合成速度的积分特性 (Residual 修正后必须回到正轨)
                 v_final_pred = model_pred + v_prior
                 final_integral = self._compute_integral_loss(v_final_pred, gt_vel)
-                
-                # 权重分配：
-                # MSE 保证波形准确
-                # Prior Integral 保证底座轨迹大体对
-                # Final Integral 保证最终轨迹精准
                 total_loss = mse_loss + prior_mse + 0.2 * prior_integral + 0.5 * final_integral
             else:
-                # End2End 模式
                 final_integral = self._compute_integral_loss(model_pred, gt_vel)
                 total_loss = mse_loss + 0.5 * final_integral
                 
